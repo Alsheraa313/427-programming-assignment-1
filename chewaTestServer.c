@@ -29,6 +29,7 @@ int main() {
 
     printf("message sent\n");
 
+
     close(clientSocket);
     close(serverSocket);
 

@@ -12,16 +12,16 @@
 
 int main(){
 
-    int net_socket;
+    int netSocket;
 
-    net_socket = socket(AF_INET, SOCK_STREAM, 0);
+    netSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(9001);
     server_address.sin_addr.s_addr = INADDR_ANY;
 
-    int connectStatus = connect(net_socket, (struct sockaddr *) &server_address, sizeof(server_address));
+    int connectStatus = connect(netSocket, (struct sockaddr *) &server_address, sizeof(server_address));
 
     if(connectStatus < 0){
         printf("something went wrong while connecting");
@@ -29,11 +29,11 @@ int main(){
     }
 
     char serverResponse[256] = {0};
-    recv(net_socket, &serverResponse, sizeof(serverResponse), 0);
+    recv(netSocket, &serverResponse, sizeof(serverResponse), 0);
 
     printf("The message the server sent was %s\n", serverResponse);
 
-    close(net_socket);
+    close(netSocket);
     return 0;
 }
 
