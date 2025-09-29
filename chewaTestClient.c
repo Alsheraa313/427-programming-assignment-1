@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h> 
 
@@ -8,11 +9,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-
-
 int main(){
 
     int netSocket;
+
+    char serverResponse[256] ={0};
+    char clientMessage[256] = {0};
 
     netSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -28,11 +30,19 @@ int main(){
         return 1;
     }
 
-    char serverResponse[256] = {0};
+    printf("enter message to send to server: ");
+
+    fgets(clientMessage, sizeof(clientMessage), stdin);
+
+    clientMessage[strcspn(clientMessage, "\n")] = 0;
+
+    send(netSocket, clientMessage, strlen(clientMessage)+1, 0);
+
     recv(netSocket, &serverResponse, sizeof(serverResponse), 0);
 
-    printf("The message the server sent was %s\n", serverResponse);
+    printf(serverResponse);
 
     close(netSocket);
     return 0;
 }
+

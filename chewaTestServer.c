@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 
 int main() {
+
+    char clientMessage[256] = {0};
     const char *serverMessage = "hello i am server";
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -31,10 +33,19 @@ int main() {
     }
 
 
-    send(clientSocket, serverMessage, strlen(serverMessage), 0);
+recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
 
-    printf("message sent\n");
+if (strcmp(clientMessage, "buy") == 0) {
 
+send(clientSocket, "input recived was 'buy'", strlen("input recived was buy"), 0);
+
+}
+
+else if (strcmp(clientMessage, "sell") == 0) {
+
+send(clientSocket, "input received was 'sell'", strlen("input received was 'sell'"), 0);
+
+}
 
     close(clientSocket);
     close(serverSocket);
