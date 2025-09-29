@@ -17,6 +17,9 @@ int main() {
     serverAddress.sin_port = htons(9001);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
+    bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)); 
+     
+    listen(serverSocket, 5);
 
     printf("server is listening\n");
 
@@ -26,6 +29,9 @@ int main() {
         close(serverSocket);
         exit(1);
     }
+
+
+    send(clientSocket, serverMessage, strlen(serverMessage), 0);
 
     printf("message sent\n");
 
