@@ -39,11 +39,23 @@ if (strcmp(clientMessage, "buy") == 0) {
 
 send(clientSocket, "input recived was 'buy'", strlen("input recived was buy"), 0);
 
+    /*
+    here ask for which card they want to buy, check if its in the array, if its valid, pop it outta the array
+    */
+
 }
 
 else if (strcmp(clientMessage, "sell") == 0) {
 
 send(clientSocket, "input received was 'sell'", strlen("input received was 'sell'"), 0);
+    /*
+    here just add whatever they type into a constructor that makes the card like 
+    "what would you like to sell(name, price, amount)?: 
+    and the input would be like 
+    pikachu, 10, 1
+    doesnt have to be too sophisticated 
+    
+    */
 
 }
 
