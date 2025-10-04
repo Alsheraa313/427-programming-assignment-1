@@ -119,9 +119,15 @@ else if(strcmp(clientMessage, "list") == 0){
 }
 else if (strcmp(clientMessage, "buy") == 0) {
     send(clientSocket, "input recived was 'buy'", strlen("input recived was 'buy'") + 1, 0);
+
+    //ask for the card ID of the card theyd like to buy, similar to how i did it with owner id
+    //delete it or decrement its quantity
+    //https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm use this for the delete operation of the card from the table if its quantity is < 1
 }
 else if (strcmp(clientMessage, "sell") == 0) {
     send(clientSocket, "input received was 'sell'", strlen("input received was 'sell'") + 1, 0);
+    //same as buy but incrementing instead of decrement, and inserting if server didnt already have it
+    //https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm the same site has sample code for inserting
 }
 else if(strcmp(clientMessage, "quit") == 0){
     break;
