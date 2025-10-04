@@ -18,5 +18,13 @@
     <ClCompile Include="..\..\chewaTestServer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\Users\dappl\Downloads\sqlite-amalgamation-3400100\sqlite-amalgamation-3400100\sqlite3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\Users\dappl\Downloads\sqlite-amalgamation-3400100\sqlite-amalgamation-3400100\sqlite3.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

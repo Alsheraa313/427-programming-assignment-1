@@ -123,7 +123,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\Users\dappl\Downloads\sqlite-amalgamation-3400100\sqlite-amalgamation-3400100\sqlite3.c" />
     <ClCompile Include="..\..\chewaTestServer.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\Users\dappl\Downloads\sqlite-amalgamation-3400100\sqlite-amalgamation-3400100\sqlite3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

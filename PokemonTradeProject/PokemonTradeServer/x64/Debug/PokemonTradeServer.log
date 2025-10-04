@@ -1,6 +1,7 @@
 ﻿  chewaTestServer.c
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(60,55): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(70,57): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(31,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(44,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(133,59): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(148,73): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(170,63): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(108,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(118,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
   PokemonTradeServer.vcxproj -> C:\Projects\427-programming-assignment-1\PokemonTradeProject\x64\Debug\PokemonTradeServer.exe
