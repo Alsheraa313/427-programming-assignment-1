@@ -10,6 +10,7 @@
 #include <sqlite3.h>
 
 
+
 static int balanceCallback(void *data, int argc, char **argv, char **azColName) {
     if (argc > 0 && argv[0]) {
         double *balance = (double*)data;
@@ -17,6 +18,8 @@ static int balanceCallback(void *data, int argc, char **argv, char **azColName) 
     }
     return 0;
 }
+
+
 
 double getBalance(sqlite3 *users, int ID) {
     char sql[256];
@@ -27,7 +30,7 @@ double getBalance(sqlite3 *users, int ID) {
 
     int rc = sqlite3_exec(users, sql, balanceCallback, &balance, &zErrMsg);
     if(rc != SQLITE_OK) {
-        fprintf(stderr, "SQL error (get_balance): %s\n", zErrMsg);
+        fprintf(stderr, "SQL error (getBalance): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
         return 1;
     }
@@ -35,10 +38,44 @@ double getBalance(sqlite3 *users, int ID) {
 }
 
 int main() {
-  sqlite3 *users;
+    char *sql;
+    sqlite3 *cards;
     char *zErrMsg = 0;
     int rc;
 
+    rc = sqlite3_open("cards", &cards);
+    if(rc) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(cards));
+        return 1;
+    }
+    fprintf(stderr, "Opened database successfully\n");
+
+       char *sql1 =
+"CREATE TABLE IF NOT EXISTS Cards ("
+"ID INTEGER PRIMARY KEY,"
+"card_name TEXT NOT NULL,"
+"card_type TEXT NOT NULL,"
+"rarity TEXT NOT NULL,"
+"price INTEGER,"
+"count INTEGER,"
+"owner_id INTEGER,"
+"FOREIGN KEY (owner_id) REFERENCES Users(ID))"
+;
+
+    rc = sqlite3_exec(cards, sql1, 0, 0, &zErrMsg);
+    if(rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error (create table): %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
+
+    sql1 = "INSERT INTO Cards (ID, card_name, card_type, rarity, price, count, owner_id) VALUES"
+        "(1, 'pikachu', 'electric', 'rare', 100, 2, 1),"
+        "(2, 'charmander', 'fire', 'common', 50, 5, 1),"
+        "(3, 'dragonite', 'dragon', 'legendary', 1000, 1, 2)";
+
+
+  sqlite3 *users;
+    
     rc = sqlite3_open("users", &users);
     if(rc) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(users));
@@ -46,7 +83,7 @@ int main() {
     }
     fprintf(stderr, "Opened database successfully\n");
 
-    char *sql = "CREATE TABLE IF NOT EXISTS users ("
+    char *sql2 = "CREATE TABLE IF NOT EXISTS users ("
                 "ID INTEGER PRIMARY KEY,"
                 "first_name TEXT,"
                 "last_name TEXT,"
@@ -55,20 +92,18 @@ int main() {
                 "usd_balance DOUBLE NOT NULL,"
                 "is_root INTEGER NOT NULL DEFAULT 0)";
 
-    rc = sqlite3_exec(users, sql, 0, 0, &zErrMsg);
+    rc = sqlite3_exec(users, sql2, 0, 0, &zErrMsg);
     if(rc != SQLITE_OK) {
         fprintf(stderr, "SQL error (create table): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
     }
 
-    sql = "INSERT INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES"
+    sql2 = "INSERT INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES"
           "(1, 'chewa', 'shewa', 'shewashewa', 'passwerd', 100, 1),"
           "(2, 'mr', 'partner', 'mr.partner', 'pass', 50, 0)";
 
-    rc = sqlite3_exec(users, sql, 0, 0, &zErrMsg);
-
     char clientMessage[256] = {0};
-    const char *serverMessage = "please input: buy (ownerID), sell buy(ownerID), list buy(ownerID), balance buy(ownerID), shutdown/quit";
+    const char *serverMessage = "please input: buy, sell, list, balance, shutdown/quit";
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in serverAddress;
@@ -90,7 +125,6 @@ int main() {
     }
 
 
-
 send(clientSocket, serverMessage,  strlen(serverMessage) + 1, 0);
 
 while(1){
@@ -105,8 +139,10 @@ if(strcmp(clientMessage, "balance") == 0){
     strlen("enter the ownerID youd like to see the balance of") + 1, 0);
 
     recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
+
     int ownerID = atoi(clientMessage);
     double balance = getBalance(users, ownerID);
+    
     char balanceResponse[256];
     snprintf(balanceResponse, sizeof(balanceResponse), "balance: %.2f", balance);
     send(clientSocket, balanceResponse, strlen(balanceResponse) + 1, 0);
@@ -116,18 +152,14 @@ else if(strcmp(clientMessage, "list") == 0){
     send(clientSocket, "enter the ownerID youd like to see the invetory of", strlen("enter the ownerID youd like to see the inventory of") + 1, 0);
     recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
     int ownerID = atoi(clientMessage);
+
+    
 }
 else if (strcmp(clientMessage, "buy") == 0) {
     send(clientSocket, "input recived was 'buy'", strlen("input recived was 'buy'") + 1, 0);
-
-    //ask for the card ID of the card theyd like to buy, similar to how i did it with owner id
-    //delete it or decrement its quantity
-    //https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm use this for the delete operation of the card from the table if its quantity is < 1
 }
 else if (strcmp(clientMessage, "sell") == 0) {
     send(clientSocket, "input received was 'sell'", strlen("input received was 'sell'") + 1, 0);
-    //same as buy but incrementing instead of decrement, and inserting if server didnt already have it
-    //https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm the same site has sample code for inserting
 }
 else if(strcmp(clientMessage, "quit") == 0){
     break;
