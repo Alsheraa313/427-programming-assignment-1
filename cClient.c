@@ -33,7 +33,7 @@ int main(){
     recv(netSocket, serverResponse, sizeof(serverResponse), 0);
     printf("%s\n", serverResponse);
 
-    printf("enter message to send to server: ");
+    printf("enter menu input: ");
 
 while(strcmp(clientMessage, "quit") != 0 && strcmp(clientMessage, "shutdown") != 0){
 
