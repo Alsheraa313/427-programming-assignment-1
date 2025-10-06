@@ -55,15 +55,23 @@ int main() {
         return 1;
     }
 
-    printf("enter message to send to server: ");
-
-    fgets(clientMessage, sizeof(clientMessage), stdin);
-    clientMessage[strcspn(clientMessage, "\n")] = 0;
-
-    send(netSocket, clientMessage, strlen(clientMessage) + 1, 0);
     recv(netSocket, serverResponse, sizeof(serverResponse), 0);
-
     printf("%s\n", serverResponse);
+
+    while (1) {
+        printf("enter message to send to server: ");
+        fgets(clientMessage, sizeof(clientMessage), stdin);
+        clientMessage[strcspn(clientMessage, "\n")] = 0;
+
+        send(netSocket, clientMessage, strlen(clientMessage) + 1, 0);
+
+        if (strcmp(clientMessage, "quit") == 0) {
+            break;
+        }
+
+        recv(netSocket, serverResponse, sizeof(serverResponse), 0);
+        printf("%s\n", serverResponse);
+    }
 
 #ifdef _WIN32
     closesocket(netSocket);
