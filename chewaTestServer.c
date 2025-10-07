@@ -175,7 +175,7 @@ void handleSellCommand(sqlite3* db, int clientSocket, char* args, const char* se
     // Send a success message back to the client
     char response[256];
     snprintf(response, sizeof(response),
-        "200 OK\nSOLD: %d %s. User’s balance USD $%.2f\n%s\n",
+        "200 OK\nSOLD: %d %s. User's balance USD $%.2f\n%s\n",
         quantity, cardName, newBalance, serverPrompt);
     send(clientSocket, response, strlen(response), 0);
 }
@@ -200,7 +200,11 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     sqlite3_stmt* stmt;
 
     // Find a seller who has at least one of the requested card
-    const char* findSellerSQL = "SELECT owner_id, count FROM pokemon_cards WHERE card_name=? AND card_type=? AND rarity=? AND count>0 LIMIT 1;";
+    // Exclude the buyer from being their own seller
+    const char* findSellerSQL =
+        "SELECT owner_id, count FROM pokemon_cards "
+        "WHERE card_name=? AND card_type=? AND rarity=? AND count>0 AND owner_id != ? "
+        "LIMIT 1;";
     if (sqlite3_prepare_v2(db, findSellerSQL, -1, &stmt, NULL) != SQLITE_OK) {
         send(clientSocket, "400 invalid command: Database error when finding seller.\n",
             strlen("400 invalid command: Database error when finding seller.\n"), 0);
@@ -209,9 +213,11 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     sqlite3_bind_text(stmt, 1, cardName, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, cardType, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, rarity, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, buyerID); // exclude buyer
 
     int sellerID = -1;
     int sellerCount = 0;
+
 
     // If seller found, store their ID and how many cards they have
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -240,7 +246,7 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
             strlen("400 invalid command: Seller does not have enough of that card.\n"), 0);
         return;
     }
-    
+
     // Calculate total cost of the transaction
     double totalPrice = price * quantity;
 
@@ -250,10 +256,20 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     sqlite3_bind_int(stmt, 1, buyerID);
 
     double buyerBalance = 0.0;
+    int buyerExists = 0;
+
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         buyerBalance = sqlite3_column_double(stmt, 0);
+        buyerExists = 1;
     }
     sqlite3_finalize(stmt);
+
+    // Check if buyer exists
+    if (!buyerExists) {
+        const char* msg = "400 invalid command: Buyer does not exist.\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
+    }
 
     // If buyer cannot afford, cancel transaction
     if (buyerBalance < totalPrice) {
@@ -262,7 +278,6 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
         return;
     }
 
-
     // Update or delete seller's card record depending on remaining count
     const char* updateSellerSQL;
     if (sellerCount == quantity) {
@@ -270,7 +285,7 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
         updateSellerSQL = "DELETE FROM pokemon_cards WHERE owner_id=? AND card_name=? AND card_type=? AND rarity=?;";
     }
     else {
-        // Subtract sold cards from seller’s count
+        // Subtract sold cards from seller's count
         updateSellerSQL = "UPDATE pokemon_cards SET count=count-? WHERE owner_id=? AND card_name=? AND card_type=? AND rarity=?;";
     }
 
@@ -354,14 +369,37 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
-    // Send success response back to the client
+    // Get updated buyer balance
+    double newBuyerBalance = 0.0;
+    sqlite3_stmt* balanceStmt;
+    const char* getNewBalanceSQL = "SELECT usd_balance FROM users WHERE ID=?;";
+    sqlite3_prepare_v2(db, getNewBalanceSQL, -1, &balanceStmt, NULL);
+    sqlite3_bind_int(balanceStmt, 1, buyerID);
+    if (sqlite3_step(balanceStmt) == SQLITE_ROW) {
+        newBuyerBalance = sqlite3_column_double(balanceStmt, 0);
+    }
+    sqlite3_finalize(balanceStmt);
+
+    // Get buyer's new total card count for this card
+    int newBuyerCount = 0;
+    const char* getBuyerCountSQL = "SELECT count FROM pokemon_cards WHERE owner_id=? AND card_name=?;";
+    sqlite3_prepare_v2(db, getBuyerCountSQL, -1, &balanceStmt, NULL);
+    sqlite3_bind_int(balanceStmt, 1, buyerID);
+    sqlite3_bind_text(balanceStmt, 2, cardName, -1, SQLITE_STATIC);
+    if (sqlite3_step(balanceStmt) == SQLITE_ROW) {
+        newBuyerCount = sqlite3_column_int(balanceStmt, 0);
+    }
+    sqlite3_finalize(balanceStmt);
+
+    // Format response message
     char response[256];
     snprintf(response, sizeof(response),
-        "200 OK\nBOUGHT: %d × %s (%s, %s) for %.2f USD total.\n%s",
-        quantity, cardName, cardType, rarity, totalPrice, serverPrompt);
+        "200 OK\nBOUGHT: New balance: %d %s. User USD balance $%.2f\n%s",
+        newBuyerCount, cardName, newBuyerBalance, serverPrompt);
 
     send(clientSocket, response, strlen(response), 0);
 }
+
 
 
 // Handles the BALANCE command.
@@ -404,7 +442,7 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
     else {
         // User ID not found, return 400 invalid command with explanation
         snprintf(response, sizeof(response),
-            "400 invalid command\nUser %d doesn’t exist.\n%s", userID, serverPrompt);
+            "400 invalid command\nUser %d doesn't exist.\n%s", userID, serverPrompt);
     }
 
     // Finalize the SQL statement and send response
