@@ -32,45 +32,9 @@ static int callback(void* data, int argc, char** argv, char** azColName) {
 }
 
 
-// SQLite callback specifically for extracting balance values from a query.
-// The balance value is stored in the variable pointed to by 'data'.
-static int balanceCallback(void* data, int argc, char** argv, char** azColName) {
-    // Check if the query returned a value
-    if (argc > 0 && argv[0]) {
-        double* balance = (double*)data; // Cast void pointer to double pointer
-        *balance = atof(argv[0]); // Convert string result to double and store it
-    }
-    return 0; // Continue normal execution
-}
-
-
-// Retrieves the USD balance for a given user ID from the database.
-double getBalance(sqlite3* db, int ID) {
-    char sql[256];
-    // Create SQL query string to fetch the user's balance
-    snprintf(sql, sizeof(sql), "SELECT usd_balance FROM users WHERE ID=%d;", ID);
-
-    double balance = 0.0;
-    char* zErrMsg = 0;
-
-    // Execute the SQL query, passing balanceCallback to extract the result
-    int rc = sqlite3_exec(db, sql, balanceCallback, &balance, &zErrMsg);
-
-    // If the SQL query fails, print the error and return 0
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "SQL error (get_balance): %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-        return 0.0;
-    }
-
-    // Return the user's balance
-    return balance;
-}
-
-
 // Handles the SELL command from the client.
-// This command allows a user to sell a certain number of Pokémon cards.
-// It updates both the Pokémon_Cards table and the user's USD balance.
+// This command allows a user to sell a certain number of Pokemon cards.
+// It updates both the Pokemon_Cards table and the user's USD balance.
 void handleSellCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
     char cardName[50];
     int quantity, userID;
@@ -182,7 +146,7 @@ void handleSellCommand(sqlite3* db, int clientSocket, char* args, const char* se
 
 
 // Handles the BUY command from the client.
-// This command allows a user to buy Pokémon cards from another user (seller).
+// This command allows a user to buy Pokemon cards from another user (seller).
 // It checks balances, updates both users' balances, and updates the card counts.
 void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
     char cardName[50], cardType[50], rarity[50];
@@ -532,11 +496,10 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args, const char* se
     send(clientSocket, response, strlen(response), 0);
 }
 
-
 int main() {
 
 #ifdef _WIN32
-    // Initialize Winsock
+    // Initialize Winsock on Windows for network communication
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         printf("Failed to initialize Winsock\n");
@@ -544,7 +507,7 @@ int main() {
     }
 #endif
 
-    // Open or create the SQLite database
+    // Open or create the SQLite database named "users.db"
     sqlite3* db;
     char* zErrMsg = 0;
     int rc = sqlite3_open("users.db", &db);
@@ -557,169 +520,194 @@ int main() {
     }
     fprintf(stderr, "Opened database successfully\n");
 
-char* sql = "CREATE TABLE IF NOT EXISTS users ("
-    "ID INTEGER PRIMARY KEY,"
-    "first_name TEXT,"
-    "last_name TEXT,"
-    "user_name TEXT NOT NULL,"
-    "password TEXT,"
-    "usd_balance DOUBLE NOT NULL,"
-    "is_root INTEGER NOT NULL DEFAULT 0);";
+    // Create "users" table if it doesn't already exist
+    char* sql = "CREATE TABLE IF NOT EXISTS users ("
+        "ID INTEGER PRIMARY KEY,"
+        "first_name TEXT,"
+        "last_name TEXT,"
+        "user_name TEXT NOT NULL,"
+        "password TEXT,"
+        "usd_balance DOUBLE NOT NULL,"
+        "is_root INTEGER NOT NULL DEFAULT 0);";
 
-rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-if (rc != SQLITE_OK) {
-    fprintf(stderr, "SQL error (create table): %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
-}
+    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error (create table): %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
 
-sql = "INSERT OR IGNORE INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES "
-    "(1, 'chewa', 'shewa', 'shewashewa', 'passwerd', 100, 1),"
-    "(2, 'mr', 'partner', 'mr.partner', 'pass', 50, 0);";
-rc = sqlite3_exec(db, sql, 0, 0, &zErrMsg);
-if (rc != SQLITE_OK) {
-    fprintf(stderr, "SQL error (insert users): %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
-}
+    // Insert default users if they don't already exist
+    sql = "INSERT OR IGNORE INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES "
+        "(1, 'chewa', 'shewa', 'shewashewa', 'passwerd', 100, 1),"
+        "(2, 'mr', 'partner', 'mr.partner', 'pass', 50, 0);";
+    rc = sqlite3_exec(db, sql, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error (insert users): %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
 
-const char* create_pokemon_cards_table =
-    "CREATE TABLE IF NOT EXISTS pokemon_cards ("
-    "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "card_name TEXT NOT NULL, "
-    "card_type TEXT NOT NULL, "
-    "rarity TEXT NOT NULL, "
-    "count INTEGER NOT NULL, "
-    "owner_id INTEGER NOT NULL, "
-    "FOREIGN KEY(owner_id) REFERENCES users(ID), "
-    "UNIQUE(card_name, card_type, rarity, owner_id)"
-    ");";
+    // Create "pokemon_cards" table if it doesn't exist
+    const char* create_pokemon_cards_table =
+        "CREATE TABLE IF NOT EXISTS pokemon_cards ("
+        "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "card_name TEXT NOT NULL, "
+        "card_type TEXT NOT NULL, "
+        "rarity TEXT NOT NULL, "
+        "count INTEGER NOT NULL, "
+        "owner_id INTEGER NOT NULL, "
+        "FOREIGN KEY(owner_id) REFERENCES users(ID), "
+        "UNIQUE(card_name, card_type, rarity, owner_id)"
+        ");";
 
-rc = sqlite3_exec(db, create_pokemon_cards_table, NULL, NULL, &zErrMsg);
-if (rc != SQLITE_OK) {
-    fprintf(stderr, "SQL error (create pokemon table): %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
-}
+    rc = sqlite3_exec(db, create_pokemon_cards_table, NULL, NULL, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error (create pokemon table): %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
 
-sql = "INSERT OR IGNORE INTO pokemon_cards (card_name, card_type, rarity, count, owner_id) VALUES "
-    "('Pikachu', 'Electric', 'Common', 2, 1),"
-    "('Charizard', 'Fire', 'Rare', 3, 2),"
-    "('Squirtle', 'Water', 'Uncommon', 30, 2);";
+    // Insert default Pokémon cards if they don't already exist
+    sql = "INSERT OR IGNORE INTO pokemon_cards (card_name, card_type, rarity, count, owner_id) VALUES "
+        "('Pikachu', 'Electric', 'Common', 2, 1),"
+        "('Charizard', 'Fire', 'Rare', 3, 2),"
+        "('Squirtle', 'Water', 'Uncommon', 30, 2);";
 
-rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
-if (rc != SQLITE_OK) {
-    fprintf(stderr, "SQL error (insert pokemon): %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
-}
+    rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error (insert pokemon): %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
 
-int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-struct sockaddr_in serverAddress;
-serverAddress.sin_family = AF_INET;
-serverAddress.sin_port = htons(9001);
-serverAddress.sin_addr.s_addr = INADDR_ANY;
+    // Create a TCP socket for the server
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-listen(serverSocket, 5);
-printf("Server is listening on port 9001\n");
+    // Set up the server address (IPv4, port 9001, listen on all interfaces)
+    struct sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(9001);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-int clientSocket = accept(serverSocket, NULL, NULL);
-if (clientSocket < 0) {
-    perror("Connection failed");
+    // Bind socket to the specified address and port
+    bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+
+    // Start listening for incoming connections (queue up to 5 clients)
+    listen(serverSocket, 5);
+    printf("Server is listening on port 9001\n");
+
+    // Accept the first client connection
+    int clientSocket = accept(serverSocket, NULL, NULL);
+    if (clientSocket < 0) {
+        perror("Connection failed");
 #ifdef _WIN32
-    closesocket(serverSocket);
-    WSACleanup();
-#else
-    close(serverSocket);
-#endif
-    sqlite3_close(db);
-    return 1;
-}
-
-char clientMessage[256] = { 0 };
-const char* serverPrompt = "Available commands: BUY, SELL, LIST, BALANCE, QUIT, SHUTDOWN";
-send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
-
-// ---------------------
-// Main server loop
-while (1) {
-    memset(clientMessage, 0, sizeof(clientMessage));
-    int bytesReceived = recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
-    if (bytesReceived <= 0) {
-        printf("Client disconnected or error occurred.\n");
-#ifdef _WIN32
-        closesocket(clientSocket);
-#else
-        close(clientSocket);
-#endif
-        clientSocket = accept(serverSocket, NULL, NULL);
-        if (clientSocket < 0) {
-            perror("Failed to accept new client");
-            continue;
-        }
-        send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
-        continue;
-    }
-
-    // Print all messages received from clients
-    printf("RECEIVED: %s\n", clientMessage);
-
-    // Handle commands
-    if (strncmp(clientMessage, "BALANCE", 7) == 0) {
-        handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
-    }
-    else if (strncmp(clientMessage, "LIST", 4) == 0) {
-        handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
-    }
-    else if (strncmp(clientMessage, "BUY", 3) == 0) {
-        char* args = clientMessage + 4;
-        handleBuyCommand(db, clientSocket, args, serverPrompt);
-    }
-    else if (strncmp(clientMessage, "SELL", 4) == 0) {
-        handleSellCommand(db, clientSocket, clientMessage + 5, serverPrompt);
-    }
-    else if (strcmp(clientMessage, "quit") == 0) {
-        send(clientSocket, "Goodbye!\n", 10, 0);
-#ifdef _WIN32
-        closesocket(clientSocket);
-#else
-        close(clientSocket);
-#endif
-        clientSocket = accept(serverSocket, NULL, NULL);
-        if (clientSocket < 0) {
-            perror("Failed to accept new client");
-            continue;
-        }
-        send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
-    }
-    else if (strcmp(clientMessage, "shutdown") == 0) {
-        const char* okMsg = "200 OK\nServer shutting down\n";
-        send(clientSocket, okMsg, strlen(okMsg), 0);
-#ifdef _WIN32
-        closesocket(clientSocket);
         closesocket(serverSocket);
         WSACleanup();
 #else
-        close(clientSocket);
         close(serverSocket);
 #endif
-
         sqlite3_close(db);
-        printf("Server terminated by shutdown command.\n");
-        exit(0);
+        return 1;
     }
-    else {
-        send(clientSocket, "Invalid command", 15, 0);
-    }
-}
 
+    // Buffer for receiving client messages
+    char clientMessage[256] = { 0 };
+
+    // Message sent to clients listing available commands
+    const char* serverPrompt = "Available commands: BUY, SELL, LIST, BALANCE, QUIT, SHUTDOWN";
+    send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
+
+    // ---------------------
+    // Main server loop to handle client commands
+    while (1) {
+        memset(clientMessage, 0, sizeof(clientMessage));
+
+        // Receive message from client
+        int bytesReceived = recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
+
+        // Handle client disconnect or errors
+        if (bytesReceived <= 0) {
+            printf("Client disconnected or error occurred.\n");
 #ifdef _WIN32
-closesocket(clientSocket);
-closesocket(serverSocket);
-WSACleanup();
+            closesocket(clientSocket);
 #else
-close(clientSocket);
-close(serverSocket);
+            close(clientSocket);
+#endif
+            // Wait for a new client
+            clientSocket = accept(serverSocket, NULL, NULL);
+            if (clientSocket < 0) {
+                perror("Failed to accept new client");
+                continue;
+            }
+            send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
+            continue;
+        }
+
+        // Print the received client message
+        printf("RECEIVED: %s\n", clientMessage);
+
+        // ---------------------
+        // Handle commands based on client input
+        if (strncmp(clientMessage, "BALANCE", 7) == 0) {
+            handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
+        }
+        else if (strncmp(clientMessage, "LIST", 4) == 0) {
+            handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
+        }
+        else if (strncmp(clientMessage, "BUY", 3) == 0) {
+            char* args = clientMessage + 4;
+            handleBuyCommand(db, clientSocket, args, serverPrompt);
+        }
+        else if (strncmp(clientMessage, "SELL", 4) == 0) {
+            handleSellCommand(db, clientSocket, clientMessage + 5, serverPrompt);
+        }
+        else if (strcmp(clientMessage, "quit") == 0) {
+            // Send goodbye message to client
+            send(clientSocket, "Goodbye!\n", 10, 0);
+#ifdef _WIN32
+            closesocket(clientSocket);
+#else
+            close(clientSocket);
+#endif
+            // Accept a new client
+            clientSocket = accept(serverSocket, NULL, NULL);
+            if (clientSocket < 0) {
+                perror("Failed to accept new client");
+                continue;
+            }
+            send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
+        }
+        else if (strcmp(clientMessage, "shutdown") == 0) {
+            // Send shutdown confirmation to client
+            const char* okMsg = "200 OK\nServer shutting down\n";
+            send(clientSocket, okMsg, strlen(okMsg), 0);
+#ifdef _WIN32
+            closesocket(clientSocket);
+            closesocket(serverSocket);
+            WSACleanup();
+#else
+            close(clientSocket);
+            close(serverSocket);
+#endif
+            // Close database and terminate server
+            sqlite3_close(db);
+            printf("Server terminated by shutdown command.\n");
+            exit(0);
+        }
+        else {
+            // Unknown command
+            send(clientSocket, "Invalid command", 15, 0);
+        }
+    }
+
+    // ---------------------
+    // Cleanup sockets and database before exiting
+#ifdef _WIN32
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    WSACleanup();
+#else
+    close(clientSocket);
+    close(serverSocket);
 #endif
 
-sqlite3_close(db);
-return 0;
-
+    sqlite3_close(db);
+    return 0;
 }
