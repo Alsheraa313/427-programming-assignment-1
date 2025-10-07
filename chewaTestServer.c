@@ -240,6 +240,28 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
             strlen("400 invalid command: Seller does not have enough of that card.\n"), 0);
         return;
     }
+    
+    // Calculate total cost of the transaction
+    double totalPrice = price * quantity;
+
+    // Check buyer's balance first
+    const char* checkBalanceSQL = "SELECT usd_balance FROM users WHERE ID=?;";
+    sqlite3_prepare_v2(db, checkBalanceSQL, -1, &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, buyerID);
+
+    double buyerBalance = 0.0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        buyerBalance = sqlite3_column_double(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+
+    // If buyer cannot afford, cancel transaction
+    if (buyerBalance < totalPrice) {
+        const char* msg = "400 invalid command: Insufficient balance for this purchase.\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
+    }
+
 
     // Update or delete seller's card record depending on remaining count
     const char* updateSellerSQL;
@@ -314,7 +336,7 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     }
 
     // Calculate total cost of the transaction
-    double totalPrice = price * quantity;
+    totalPrice = price * quantity;
 
     // Deduct total price from buyer's balance
     const char* updateBuyerBalance = "UPDATE users SET usd_balance=usd_balance-? WHERE ID=?;";
