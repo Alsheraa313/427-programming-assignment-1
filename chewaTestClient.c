@@ -34,10 +34,9 @@ int main() {
 
     // Set up the server address structure
     struct sockaddr_in server_address;
-    server_address.sin_family = AF_INET;          // Use IPv4
-    server_address.sin_port = htons(9001);        // Connect to port 9001
+    server_address.sin_family = AF_INET;        
+    server_address.sin_port = htons(9001);      
 
-    // Convert and assign the loopback address (localhost: 127.0.0.1)
 #ifdef _WIN32
     inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr);
 #else
@@ -72,14 +71,14 @@ int main() {
         // Read user input from console
         if (!fgets(clientMessage, sizeof(clientMessage), stdin)) break;
 
-        // Remove newline character at the end of input
+
         clientMessage[strcspn(clientMessage, "\n")] = 0;
 
         // Send message to server
         send(netSocket, clientMessage, strlen(clientMessage), 0);
 
         // If user types "quit", exit the loop
-        if (strcmp(clientMessage, "quit") == 0) {
+        if (strcmp(clientMessage, "QUIT") == 0) {
             printf("Client exiting.\n");
             break;
         }
@@ -92,7 +91,7 @@ int main() {
         while (1) {
             int bytesReceived = recv(netSocket, serverResponse + totalBytes,
                 sizeof(serverResponse) - totalBytes - 1, 0);
-            if (bytesReceived <= 0) break; // Server closed connection or error occurred
+            if (bytesReceived <= 0) break;
 
             totalBytes += bytesReceived;
 
@@ -100,7 +99,6 @@ int main() {
             if (bytesReceived < sizeof(serverResponse) - totalBytes - 1) break;
         }
 
-        // Null-terminate response and print to screen
         serverResponse[totalBytes] = '\0';
         printf("%s\n", serverResponse);
 
@@ -112,11 +110,9 @@ int main() {
     }
 
 #ifdef _WIN32
-    // Close socket and clean up Winsock (Windows only)
     closesocket(netSocket);
     WSACleanup();
 #else
-    // Close socket on Unix-based systems
     close(netSocket);
 #endif
 

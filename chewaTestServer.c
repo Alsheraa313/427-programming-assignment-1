@@ -19,16 +19,13 @@
 #endif
 
 // SQLite callback for printing query results to the console.
-// This function is used when running general SQL queries for testing or debugging.
 static int callback(void* data, int argc, char** argv, char** azColName) {
     int i;
-    // Loop through all columns returned by the SQL query
     for (i = 0; i < argc; i++) {
-        // Print each column name and its value, or "NULL" if no value exists
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
     }
     printf("\n");
-    return 0; // Returning 0 tells SQLite to continue
+    return 0;
 }
 
 
@@ -177,7 +174,7 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     sqlite3_bind_text(stmt, 1, cardName, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, cardType, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, rarity, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 4, buyerID); // exclude buyer
+    sqlite3_bind_int(stmt, 4, buyerID);
 
     int sellerID = -1;
     int sellerCount = 0;
@@ -245,11 +242,9 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
     // Update or delete seller's card record depending on remaining count
     const char* updateSellerSQL;
     if (sellerCount == quantity) {
-        // Delete card entry if all cards are sold
         updateSellerSQL = "DELETE FROM pokemon_cards WHERE owner_id=? AND card_name=? AND card_type=? AND rarity=?;";
     }
     else {
-        // Subtract sold cards from seller's count
         updateSellerSQL = "UPDATE pokemon_cards SET count=count-? WHERE owner_id=? AND card_name=? AND card_type=? AND rarity=?;";
     }
 
@@ -372,8 +367,6 @@ void handleBuyCommand(sqlite3* db, int clientSocket, char* args, const char* ser
 void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
     int userID;
 
-    // Parse arguments from the client command
-    // If not formatted correctly, return a 403 message format error.
     if (sscanf(args, "%d", &userID) != 1) {
         const char* errMsg = "403 message format error\nUsage: BALANCE <OwnerID>\n";
         send(clientSocket, errMsg, strlen(errMsg), 0);
@@ -383,7 +376,6 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
     sqlite3_stmt* stmt;
     const char* query = "SELECT usd_balance FROM users WHERE ID = ?;";
 
-    // Prepare SQL query to check the user's balance
     if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
         const char* errMsg = "400 invalid command\nDatabase error while checking balance.\n";
         send(clientSocket, errMsg, strlen(errMsg), 0);
@@ -397,14 +389,11 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
 
     // Execute the query and check if a record is found
     if (sqlite3_step(stmt) == SQLITE_ROW) {
-        // Extract balance value from query result
         double balance = sqlite3_column_double(stmt, 0);
 
-        // Send success response to the client
         snprintf(response, sizeof(response), "200 OK\nBalance: %.2f USD\n%s", balance, serverPrompt);
     }
     else {
-        // User ID not found, return 400 invalid command with explanation
         snprintf(response, sizeof(response),
             "400 invalid command\nUser %d doesn't exist.\n%s", userID, serverPrompt);
     }
@@ -415,14 +404,150 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
 }
 
 
+//Handles the LOOKUP command
+// Expected format: LOOKUP <card_name> || <type> || <rarity>
+// This command checks if there are any cards that matches the card the user entered, if so it returns the ID,
+// Card Name, Type, Rarity, Count, and Owner of the card
+void handleLookupCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
+    char arg1[50] = "", arg2[50] = "", arg3[50] = "";
+
+    // Trim leading whitespace
+    while (*args == ' ' || *args == '\t' || *args == '\n' || *args == '\r') {
+        args++;
+    }
+
+    // Parse up to three arguments
+    int count = sscanf(args, "%49s %49s %49s", arg1, arg2, arg3);
+
+    // If no arguments were provided, send format error
+    if (count < 1) {
+        send(clientSocket,
+            "403 message format error: Usage -> LOOKUP <card_name> or <card_type> or <rarity>\n",
+            strlen("403 message format error: Usage -> LOOKUP <card_name> or <card_type> or <rarity>\n"),
+            0);
+        return;
+    }
+
+    char response[4096];
+    memset(response, 0, sizeof(response));
+
+    // Build SQL query depending on how many arguments there are
+    const char* baseSQL =
+        "SELECT id, card_name, card_type, rarity, count, owner_id "
+        "FROM pokemon_cards WHERE "
+        "(card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?)";
+
+    if (count >= 2) {
+        baseSQL =
+            "SELECT id, card_name, card_type, rarity, count, owner_id "
+            "FROM pokemon_cards WHERE "
+            "((card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?) "
+            "AND (card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?))";
+    }
+    if (count == 3) {
+        baseSQL =
+            "SELECT id, card_name, card_type, rarity, count, owner_id "
+            "FROM pokemon_cards WHERE "
+            "((card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?) "
+            "AND (card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?) "
+            "AND (card_name LIKE ? OR card_type LIKE ? OR rarity LIKE ?))";
+    }
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, baseSQL, -1, &stmt, NULL) != SQLITE_OK) {
+        snprintf(response, sizeof(response), "500 Internal Server Error: %s\n", sqlite3_errmsg(db));
+        send(clientSocket, response, strlen(response), 0);
+        return;
+    }
+
+#define BIND_LIKE(index, value) do { \
+        char pattern[64]; \
+        snprintf(pattern, sizeof(pattern), "%%%s%%", value); \
+        sqlite3_bind_text(stmt, index, pattern, -1, SQLITE_TRANSIENT); \
+    } while(0)
+
+    if (count >= 1) {
+        BIND_LIKE(1, arg1); BIND_LIKE(2, arg1); BIND_LIKE(3, arg1);
+    }
+    if (count >= 2) {
+        BIND_LIKE(4, arg2); BIND_LIKE(5, arg2); BIND_LIKE(6, arg2);
+    }
+    if (count == 3) {
+        BIND_LIKE(7, arg3); BIND_LIKE(8, arg3); BIND_LIKE(9, arg3);
+    }
+
+    strcat(response, "200 OK\n\n");
+    strcat(response, "ID     Card Name           Type       Rarity     Count     Owner\n");
+    strcat(response, "--------------------------------------------------------------------\n");
+
+    int rowsFound = 0;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        rowsFound++;
+
+        int id = sqlite3_column_int(stmt, 0);
+        const unsigned char* name = sqlite3_column_text(stmt, 1);
+        const unsigned char* type = sqlite3_column_text(stmt, 2);
+        const unsigned char* rarity = sqlite3_column_text(stmt, 3);
+        int countValue = sqlite3_column_int(stmt, 4);
+        const unsigned char* owner = sqlite3_column_text(stmt, 5);
+
+        char line[256];
+        snprintf(line, sizeof(line),
+            "%-6d %-18s %-10s %-10s %-9d %-10s\n",
+            id, name, type, rarity, countValue, owner);
+
+        strncat(response, line, sizeof(response) - strlen(response) - 1);
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (rowsFound == 0) {
+        snprintf(response, sizeof(response), "404 error Your search did not match any records.\n");
+    }
+
+    strncat(response, serverPrompt, sizeof(response) - strlen(response) - 1);
+    send(clientSocket, response, strlen(response), 0);
+}
+
+
+//*******************************************
+// Only root can use this command so it should return an error message if the user is not a root
+// Server sends: 200 OK
+// Then it lists the active users, dispalys UserID and IP
+// Format: 
+// The list of the active users:
+// John 141.215.69.202
+// root 127.0.0.1
+//*******************************************
+// Handles the WHO command
+// Expected format: WHO
+// This command (WHICH CAN ONLY BE USED BY THE ROOT USER) will display a list of the active users and the user's IP address
+void handleWhoCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
+    char response[4096];
+    memset(response, 0, sizeof(response));
+    
+    int response_len = snprintf(response, sizeof(response), "200 OK\nThis command has not been implemented yet.\n");
+
+    // Add the server prompt to the end of the response
+    if (strlen(serverPrompt) + response_len < sizeof(response) - 1) {
+        strncat(response, serverPrompt, sizeof(response) - strlen(response) - 1);
+    }
+
+    send(clientSocket, response, strlen(response), 0);
+}
+
+
+//*******************************************
+// Only root user can list ALL records for ALL users
+// John should only return John records
+//*******************************************
 // Handles the LIST command.
 // Expected format: LIST <userID>
 // This command shows all Pokemon cards owned by a specific user.
 void handleListCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
     int userID;
 
-    // Check if user entered the command in the right format.
-    // If not, return a 403 message format error.
     if (sscanf(args, "%d", &userID) != 1) {
         const char* msg = "403 message format error\nUsage: LIST <OwnerID>\n";
         send(clientSocket, msg, strlen(msg), 0);
@@ -431,12 +556,10 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args, const char* se
 
     sqlite3_stmt* stmt;
 
-    // SQL query to get all Pokemon cards owned by the given user
     const char* query =
         "SELECT id, card_name, card_type, rarity, count, owner_id "
         "FROM pokemon_cards WHERE owner_id = ?;";
 
-    // Prepare the SQL statement
     if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
         const char* msg = "400 invalid command\nDatabase error while listing cards.\n";
         send(clientSocket, msg, strlen(msg), 0);
@@ -449,7 +572,6 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args, const char* se
     char response[4096];
     memset(response, 0, sizeof(response));
 
-    // Start building the success response message
     int response_len = snprintf(response, sizeof(response),
         "200 OK\nThe list of records in the Pokemon cards table for user %d:\n"
         "---------------------------------------------------------------\n"
@@ -536,10 +658,13 @@ int main() {
         sqlite3_free(zErrMsg);
     }
 
-    // Insert default users if they don't already exist
+    // Insert users into the table
     sql = "INSERT OR IGNORE INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES "
-        "(1, 'chewa', 'shewa', 'shewashewa', 'passwerd', 100, 1),"
-        "(2, 'mr', 'partner', 'mr.partner', 'pass', 50, 0);";
+        "(1, 'Branch', 'Tree', 'Root', 'Root01', 100, 1),"
+        "(2, 'Ms', 'Partner', 'Mary', 'Mary01', 50, 0),"
+        "(3, 'Mr', 'Dude', 'John', 'John01', 200, 0),"
+        "(4, 'Ms', 'Misses', 'Moe', 'Moe01', 300, 0);";
+
     rc = sqlite3_exec(db, sql, 0, 0, &zErrMsg);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "SQL error (insert users): %s\n", zErrMsg);
@@ -611,10 +736,9 @@ int main() {
     char clientMessage[256] = { 0 };
 
     // Message sent to clients listing available commands
-    const char* serverPrompt = "Available commands: BUY, SELL, LIST, BALANCE, QUIT, SHUTDOWN";
+    const char* serverPrompt = "Available commands: BUY, SELL, DEPOSIT, BALANCE, LIST, QUIT, SHUTDOWN, LOGIN, LOGOUT, WHO, LOOKUP";
     send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
 
-    // ---------------------
     // Main server loop to handle client commands
     while (1) {
         memset(clientMessage, 0, sizeof(clientMessage));
@@ -640,11 +764,8 @@ int main() {
             continue;
         }
 
-        // Print the received client message
         printf("RECEIVED: %s\n", clientMessage);
 
-        // ---------------------
-        // Handle commands based on client input
         if (strncmp(clientMessage, "BALANCE", 7) == 0) {
             handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
         }
@@ -658,15 +779,19 @@ int main() {
         else if (strncmp(clientMessage, "SELL", 4) == 0) {
             handleSellCommand(db, clientSocket, clientMessage + 5, serverPrompt);
         }
-        else if (strcmp(clientMessage, "quit") == 0) {
-            // Send goodbye message to client
+        else if (strncmp(clientMessage, "WHO", 3) == 0) {
+            handleWhoCommand(db, clientSocket, clientMessage + 4, serverPrompt);
+        }
+        else if (strncmp(clientMessage, "LOOKUP", 6) == 0) {
+            handleLookupCommand(db, clientSocket, clientMessage + 7, serverPrompt);
+        }
+        else if (strcmp(clientMessage, "QUIT") == 0) {
             send(clientSocket, "Goodbye!\n", 10, 0);
 #ifdef _WIN32
             closesocket(clientSocket);
 #else
             close(clientSocket);
 #endif
-            // Accept a new client
             clientSocket = accept(serverSocket, NULL, NULL);
             if (clientSocket < 0) {
                 perror("Failed to accept new client");
@@ -674,8 +799,7 @@ int main() {
             }
             send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
         }
-        else if (strcmp(clientMessage, "shutdown") == 0) {
-            // Send shutdown confirmation to client
+        else if (strcmp(clientMessage, "SHUTDOWN") == 0) {
             const char* okMsg = "200 OK\nServer shutting down\n";
             send(clientSocket, okMsg, strlen(okMsg), 0);
 #ifdef _WIN32
@@ -692,12 +816,11 @@ int main() {
             exit(0);
         }
         else {
-            // Unknown command
             send(clientSocket, "Invalid command", 15, 0);
         }
     }
 
-    // ---------------------
+
     // Cleanup sockets and database before exiting
 #ifdef _WIN32
     closesocket(clientSocket);
