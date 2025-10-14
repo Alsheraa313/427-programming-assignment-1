@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <sqlite3.h>
 #endif
+static int loginStatus = 0;
 
 // SQLite callback for printing query results to the console.
 static int callback(void* data, int argc, char** argv, char** azColName) {
@@ -59,6 +60,7 @@ void loginFunction(sqlite3* db, int clientSocket, char* args, const char* server
         snprintf(response, sizeof(response),
             "200 OK\n",
             username, userID, isRoot ? " [ROOT]" : "", serverPrompt);
+        loginStatus = 1;
     } else {
         snprintf(response, sizeof(response),
             "403 Wrong UserID or Password\n",
@@ -776,94 +778,102 @@ int main() {
     // Buffer for receiving client messages
     char clientMessage[256] = { 0 };
 
-    // Message sent to clients listing available commands
-    const char* serverPrompt = "Available commands: BUY, SELL, DEPOSIT, BALANCE, LIST, QUIT, SHUTDOWN, LOGIN, LOGOUT, WHO, LOOKUP";
-    send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
+const char* loginPrompt = "Enter LOGIN followed by username and password\n";
+const char* serverPrompt = "Available commands: BUY, SELL, DEPOSIT, BALANCE, LIST, QUIT, SHUTDOWN, LOGIN, LOGOUT, WHO, LOOKUP\n";
 
-    // Main server loop to handle client commands
-    while (1) {
-        memset(clientMessage, 0, sizeof(clientMessage));
 
-        // Receive message from client
-        int bytesReceived = recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
+while (loginStatus == 0) {
+    send(clientSocket, loginPrompt, strlen(loginPrompt), 0);
 
-        // Handle client disconnect or errors
-        if (bytesReceived <= 0) {
-            printf("Client disconnected or error occurred.\n");
+    memset(clientMessage, 0, sizeof(clientMessage));
+    int bytesReceived = recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
+    if (bytesReceived <= 0) {
+        printf("client disconnected\n");
 #ifdef _WIN32
-            closesocket(clientSocket);
+        closesocket(clientSocket);
 #else
-            close(clientSocket);
+        close(clientSocket);
 #endif
-            // Wait for a new client
-            clientSocket = accept(serverSocket, NULL, NULL);
-            if (clientSocket < 0) {
-                perror("Failed to accept new client");
-                continue;
-            }
-            send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
-            continue;
-        }
-
-        printf("RECEIVED: %s\n", clientMessage);
-
-        if (strncmp(clientMessage, "BALANCE", 7) == 0) {
-            handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
-        }
-        else if(strncmp(clientMessage, "LOGIN", 5) == 0){
-            loginFunction(db, clientSocket, clientMessage + 6, serverPrompt);
-        }
-        else if (strncmp(clientMessage, "LIST", 4) == 0) {
-            handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
-        }
-        else if (strncmp(clientMessage, "BUY", 3) == 0) {
-            char* args = clientMessage + 4;
-            handleBuyCommand(db, clientSocket, args, serverPrompt);
-        }
-        else if (strncmp(clientMessage, "SELL", 4) == 0) {
-            handleSellCommand(db, clientSocket, clientMessage + 5, serverPrompt);
-        }
-        else if (strncmp(clientMessage, "WHO", 3) == 0) {
-            handleWhoCommand(db, clientSocket, clientMessage + 4, serverPrompt);
-        }
-        else if (strncmp(clientMessage, "LOOKUP", 6) == 0) {
-            handleLookupCommand(db, clientSocket, clientMessage + 7, serverPrompt);
-        }
-        else if (strcmp(clientMessage, "QUIT") == 0) {
-            send(clientSocket, "Goodbye!\n", 10, 0);
-#ifdef _WIN32
-            closesocket(clientSocket);
-#else
-            close(clientSocket);
-#endif
-            clientSocket = accept(serverSocket, NULL, NULL);
-            if (clientSocket < 0) {
-                perror("Failed to accept new client");
-                continue;
-            }
-            send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
-        }
-        else if (strcmp(clientMessage, "SHUTDOWN") == 0) {
-            const char* okMsg = "200 OK\nServer shutting down\n";
-            send(clientSocket, okMsg, strlen(okMsg), 0);
-#ifdef _WIN32
-            closesocket(clientSocket);
-            closesocket(serverSocket);
-            WSACleanup();
-#else
-            close(clientSocket);
-            close(serverSocket);
-#endif
-            // Close database and terminate server
-            sqlite3_close(db);
-            printf("Server terminated by shutdown command.\n");
-            exit(0);
-        }
-        else {
-            send(clientSocket, "Invalid command", 15, 0);
-        }
+        clientSocket = accept(serverSocket, NULL, NULL);
+        continue;
     }
 
+    if (strncmp(clientMessage, "LOGIN", 5) == 0) {
+        loginFunction(db, clientSocket, clientMessage + 6, loginPrompt);
+    } else {
+        const char* msg = "Enter LOGIN followed by username and password \n";
+        send(clientSocket, msg, strlen(msg), 0);
+    }
+}
+
+// ---------------- COMMAND LOOP (AFTER LOGIN) ----------------
+while (1) {
+    send(clientSocket, serverPrompt, strlen(serverPrompt), 0);
+    memset(clientMessage, 0, sizeof(clientMessage));
+
+    int bytesReceived = recv(clientSocket, clientMessage, sizeof(clientMessage), 0);
+    if (bytesReceived <= 0) {
+        printf("Client disconnected.\n");
+#ifdef _WIN32
+        closesocket(clientSocket);
+#else
+        close(clientSocket);
+#endif
+        clientSocket = accept(serverSocket, NULL, NULL);
+        loginStatus = 0; // force re-login
+        continue;
+    }
+
+    printf("RECEIVED (after login): %s\n", clientMessage);
+
+    if (strncmp(clientMessage, "BALANCE", 7) == 0) {
+        handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
+    } else if (strncmp(clientMessage, "LIST", 4) == 0) {
+        handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
+    } else if (strncmp(clientMessage, "BUY", 3) == 0) {
+        handleBuyCommand(db, clientSocket, clientMessage + 4, serverPrompt);
+    } else if (strncmp(clientMessage, "SELL", 4) == 0) {
+        handleSellCommand(db, clientSocket, clientMessage + 5, serverPrompt);
+    } else if (strncmp(clientMessage, "WHO", 3) == 0) {
+        handleWhoCommand(db, clientSocket, clientMessage + 4, serverPrompt);
+    } else if (strncmp(clientMessage, "LOOKUP", 6) == 0) {
+        handleLookupCommand(db, clientSocket, clientMessage + 7, serverPrompt);
+    } else if (strcmp(clientMessage, "LOGOUT") == 0) {
+        const char* msg = "You have been logged out.\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        loginStatus = 0;
+        break; // Return to login loop
+    } else if (strcmp(clientMessage, "QUIT") == 0) {
+        send(clientSocket, "Goodbye!\n", 9, 0);
+#ifdef _WIN32
+        closesocket(clientSocket);
+#else
+        close(clientSocket);
+#endif
+        clientSocket = accept(serverSocket, NULL, NULL);
+        loginStatus = 0;
+        continue;
+    } else if (strcmp(clientMessage, "SHUTDOWN") == 0) {
+        const char* okMsg = "200 OK\nServer shutting down\n";
+        send(clientSocket, okMsg, strlen(okMsg), 0);
+#ifdef _WIN32
+        closesocket(clientSocket);
+        closesocket(serverSocket);
+        WSACleanup();
+#else
+        close(clientSocket);
+        close(serverSocket);
+#endif
+        sqlite3_close(db);
+        printf("Server terminated by shutdown command.\n");
+        exit(0);
+    } else {
+        const char* msg = "Invalid command\n";
+        send(clientSocket, msg, strlen(msg), 0);
+    }
+
+
+}
 
     // Cleanup sockets and database before exiting
 #ifdef _WIN32
