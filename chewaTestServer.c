@@ -27,6 +27,47 @@ static int callback(void* data, int argc, char** argv, char** azColName) {
     printf("\n");
     return 0;
 }
+//Login function, we should update the other functions like LIST to make it dependent on who is logged in
+void loginFunction(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
+    char username[50], password[50];
+
+    
+    if (sscanf(args, "%49s %49s", username, password) != 2) {
+        const char* msg = "403 message format error\nUsage: LOGIN <username> <password>\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
+    }
+
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT ID, is_root FROM users WHERE user_name = ? AND password = ?;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        const char* msg = "400 invalid command\nDatabase error while logging in.\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, password, -1, SQLITE_STATIC);
+
+    char response[256];
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        int userID = sqlite3_column_int(stmt, 0);
+        int isRoot = sqlite3_column_int(stmt, 1);
+
+        snprintf(response, sizeof(response),
+            "200 OK\n",
+            username, userID, isRoot ? " [ROOT]" : "", serverPrompt);
+    } else {
+        snprintf(response, sizeof(response),
+            "403 Wrong UserID or Password\n",
+            serverPrompt);
+    }
+
+    sqlite3_finalize(stmt);
+    send(clientSocket, response, strlen(response), 0);
+}
 
 
 // Handles the SELL command from the client.
@@ -690,7 +731,7 @@ int main() {
         sqlite3_free(zErrMsg);
     }
 
-    // Insert default Pokémon cards if they don't already exist
+    // Insert default PokÃ©mon cards if they don't already exist
     sql = "INSERT OR IGNORE INTO pokemon_cards (card_name, card_type, rarity, count, owner_id) VALUES "
         "('Pikachu', 'Electric', 'Common', 2, 1),"
         "('Charizard', 'Fire', 'Rare', 3, 2),"
@@ -715,7 +756,7 @@ int main() {
     bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
 
     // Start listening for incoming connections (queue up to 5 clients)
-    listen(serverSocket, 5);
+    listen(serverSocket, 10);
     printf("Server is listening on port 9001\n");
 
     // Accept the first client connection
@@ -768,6 +809,9 @@ int main() {
 
         if (strncmp(clientMessage, "BALANCE", 7) == 0) {
             handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
+        }
+        else if(strncmp(clientMessage, "LOGIN", 5) == 0){
+            loginFunction(db, clientSocket, clientMessage + 6, serverPrompt);
         }
         else if (strncmp(clientMessage, "LIST", 4) == 0) {
             handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
