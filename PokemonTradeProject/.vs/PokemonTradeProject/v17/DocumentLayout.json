@@ -4,9 +4,6 @@
   "Documents": [
     {
       "AbsoluteMoniker": "D:0:0:{3217D0AB-DCCE-4BD2-9173-DA1D4FDF3D6A}|PokemonTradeServer\\PokemonTradeServer.vcxproj|C:\\Projects\\427-programming-assignment-1\\chewaTestServer.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8289C051-D22C-4D4C-B2AC-4E90BF9A6968}|PokemonTradeProject\\PokemonTradeProject.vcxproj|C:\\Projects\\427-programming-assignment-1\\chewaTestClient.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -16,20 +13,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "chewaTestClient.c",
-              "DocumentMoniker": "C:\\Projects\\427-programming-assignment-1\\chewaTestClient.c",
-              "RelativeDocumentMoniker": "..\\chewaTestClient.c",
-              "ToolTip": "C:\\Projects\\427-programming-assignment-1\\chewaTestClient.c",
-              "RelativeToolTip": "..\\chewaTestClient.c",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAAAFMAAAAJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2025-10-07T14:49:06.77Z"
-            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -38,7 +23,7 @@
               "RelativeDocumentMoniker": "..\\chewaTestServer.c",
               "ToolTip": "C:\\Projects\\427-programming-assignment-1\\chewaTestServer.c",
               "RelativeToolTip": "..\\chewaTestServer.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFgDAABRAAAAAAAAAA==",
+              "ViewState": "AgIAACUDAAAAAAAAAAAAAEkDAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2025-10-03T03:35:12.872Z",
               "EditorCaption": ""

@@ -79,20 +79,14 @@ int handleLoginCommand(sqlite3* db, int clientSocket, char* args, const char* se
         snprintf(response, sizeof(response),
             "200 OK\n",
             username, userID, isRoot ? " [ROOT]" : "", serverPrompt);
-    } else {
-        snprintf(response, sizeof(response),
-            "403 Wrong UserID or Password\n",
-            serverPrompt);
-    }
-
         sqlite3_finalize(stmt);
         send(clientSocket, response, strlen(response), 0);
         //*************************************************************************************************************************
         // ADDED CODE: 
         // NOTE: Changed return type from void to int, 1 = successful login, 0 = unsuccessful login
         // Loop in main will continue if 0, stop if 1, ensuring the client is REQUIRED to login before using other commands
-        
-        
+
+
         // Updates the active count and adds the new client to the list of active clients
         active_count++;
         ActiveClient newClient;
@@ -109,8 +103,9 @@ int handleLoginCommand(sqlite3* db, int clientSocket, char* args, const char* se
         return 1;
     }
     else {
-        const char* msg = "403 Wrong UserID or Password\n";
-        send(clientSocket, msg, strlen(msg), 0);
+        snprintf(response, sizeof(response),
+            "403 Wrong UserID or Password\n",
+            serverPrompt);
         return 0;
     }
 }
@@ -844,7 +839,7 @@ while (loginStatus == 0) {
     }
 
     if (strncmp(clientMessage, "LOGIN", 5) == 0) {
-        loginFunction(db, clientSocket, clientMessage + 6, loginPrompt);
+        handleLoginCommand(db, clientSocket, clientMessage + 6, loginPrompt);
     } else {
         const char* msg = "Enter LOGIN followed by username and password \n";
         send(clientSocket, msg, strlen(msg), 0);
