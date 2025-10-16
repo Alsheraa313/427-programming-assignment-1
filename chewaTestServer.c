@@ -18,6 +18,20 @@
 #include <sqlite3.h>
 #endif
 
+
+// Simple struct for Active Clients. It contains their username and IP address
+typedef struct {
+    char username[50];
+    char ip[50];
+    int is_root; // 0 for false, 1 for true
+} ActiveClient;
+
+// MAX clients = 10
+ActiveClient active_clients[10];
+
+// Keeps track of how many clients are currently active on the server
+int active_count = 0;
+
 // SQLite callback for printing query results to the console.
 static int callback(void* data, int argc, char** argv, char** azColName) {
     int i;
@@ -27,15 +41,20 @@ static int callback(void* data, int argc, char** argv, char** azColName) {
     printf("\n");
     return 0;
 }
-//Login function, we should update the other functions like LIST to make it dependent on who is logged in
-void loginFunction(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
+
+
+// Handles the LOGIN command from the client.
+// Expected: LOGIN <username> <password>
+// This command logs in the user and adds their information to the active clients list and updates the number of active users
+// Returns 1 if the client successfully logged in, 0 if not
+int handleLoginCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
     char username[50], password[50];
 
     
     if (sscanf(args, "%49s %49s", username, password) != 2) {
         const char* msg = "403 message format error\nUsage: LOGIN <username> <password>\n";
         send(clientSocket, msg, strlen(msg), 0);
-        return;
+        return 0;
     }
 
     sqlite3_stmt* stmt;
@@ -44,7 +63,7 @@ void loginFunction(sqlite3* db, int clientSocket, char* args, const char* server
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
         const char* msg = "400 invalid command\nDatabase error while logging in.\n";
         send(clientSocket, msg, strlen(msg), 0);
-        return;
+        return 0;
     }
 
     sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
@@ -56,17 +75,37 @@ void loginFunction(sqlite3* db, int clientSocket, char* args, const char* server
         int userID = sqlite3_column_int(stmt, 0);
         int isRoot = sqlite3_column_int(stmt, 1);
 
-        snprintf(response, sizeof(response),
-            "200 OK\n",
-            username, userID, isRoot ? " [ROOT]" : "", serverPrompt);
-    } else {
-        snprintf(response, sizeof(response),
-            "403 Wrong UserID or Password\n",
-            serverPrompt);
-    }
+        snprintf(response, sizeof(response), "200 OK\n", username, userID, isRoot ? " [ROOT]" : "", serverPrompt);
 
-    sqlite3_finalize(stmt);
-    send(clientSocket, response, strlen(response), 0);
+
+        sqlite3_finalize(stmt);
+        send(clientSocket, response, strlen(response), 0);
+        //*************************************************************************************************************************
+        // ADDED CODE: 
+        // NOTE: Changed return type from void to int, 1 = successful login, 0 = unsuccessful login
+        // Loop in main will continue if 0, stop if 1, ensuring the client is REQUIRED to login before using other commands
+        
+        
+        // Updates the active count and adds the new client to the list of active clients
+        active_count++;
+        ActiveClient newClient;
+        strncpy(newClient.username, username, sizeof(newClient.username) - 1);
+        newClient.username[sizeof(newClient.username) - 1] = '\0';
+
+        strncpy(newClient.ip, "192.168.1.2", sizeof(newClient.ip) - 1); // Default IP is a placeholder for the ACTUAL IP address
+        newClient.username[sizeof(newClient.ip) - 1] = '\0';
+
+        newClient.is_root = isRoot;
+
+        active_clients[active_count - 1] = newClient;
+        //*************************************************************************************************************************
+        return 1;
+    }
+    else {
+        const char* msg = "403 Wrong UserID or Password\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return 0;
+    }
 }
 
 
@@ -446,7 +485,7 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
 
 
 //Handles the LOOKUP command
-// Expected format: LOOKUP <card_name> || <type> || <rarity>
+// Expected format: LOOKUP <card_name> and/or <type> and/or <rarity>
 // This command checks if there are any cards that matches the card the user entered, if so it returns the ID,
 // Card Name, Type, Rarity, Count, and Owner of the card
 void handleLookupCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt) {
@@ -659,6 +698,7 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args, const char* se
     send(clientSocket, response, strlen(response), 0);
 }
 
+
 int main() {
 
 #ifdef _WIN32
@@ -778,7 +818,7 @@ int main() {
 
     // Message sent to clients listing available commands
     const char* serverPrompt = "Available commands: BUY, SELL, DEPOSIT, BALANCE, LIST, QUIT, SHUTDOWN, LOGIN, LOGOUT, WHO, LOOKUP";
-    send(clientSocket, serverPrompt, strlen(serverPrompt) + 1, 0);
+    send(clientSocket, "Available commands: LOGIN, QUIT", strlen("Available commands: LOGIN, QUIT") + 1, 0);
 
     // Main server loop to handle client commands
     while (1) {
@@ -811,7 +851,7 @@ int main() {
             handleBalanceCommand(db, clientSocket, clientMessage + 8, serverPrompt);
         }
         else if(strncmp(clientMessage, "LOGIN", 5) == 0){
-            loginFunction(db, clientSocket, clientMessage + 6, serverPrompt);
+            handleLoginCommand(db, clientSocket, clientMessage + 6, serverPrompt);
         }
         else if (strncmp(clientMessage, "LIST", 4) == 0) {
             handleListCommand(db, clientSocket, clientMessage + 5, serverPrompt);
