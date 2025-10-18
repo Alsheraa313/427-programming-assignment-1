@@ -44,7 +44,7 @@ void *receiver_thread(void *arg) {
             char buffer[RESPONSE_SIZE];
             int bytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
             if (bytes <= 0) {
-                printf("Server closed connection or error occurred (recv <= 0).\n");
+                printf("Server closed\n");
                 running = 0;
                 break;
             }
@@ -129,7 +129,7 @@ int main() {
         }
         userInput[strcspn(userInput, "\n")] = 0;
         if (strncmp(userInput, "LOGIN", 5) != 0) {
-            printf("Please send a LOGIN command first.\n");
+            printf("Please LOGIN first\n");
             continue;
         }
 
@@ -144,7 +144,7 @@ int main() {
 
         printf("%s\n", response);
         if (strstr(response, "200 OK") != NULL) {
-            printf("Login successful.\n");
+            printf("Login successful\n");
             break;
         }
     }
@@ -166,7 +166,7 @@ int main() {
         running = 0;
     }
 
-    // Main thread: use select() to monitor stdin and send user input to server
+    
     while (running) {
         fd_set read_fds;
         FD_ZERO(&read_fds);
