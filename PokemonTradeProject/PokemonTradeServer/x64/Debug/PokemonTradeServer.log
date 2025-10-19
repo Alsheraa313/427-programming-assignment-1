@@ -1,50 +1,42 @@
 ﻿  chewaTestServer.c
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(57,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(66,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(81,13): warning C4474: 'snprintf' : too many arguments passed for format string
-      C:\Projects\427-programming-assignment-1\chewaTestServer.c(81,13):
-      placeholders and their parameters expect 0 variadic arguments, but 4 were provided
-  
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(83,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(108,13): warning C4474: 'snprintf' : too many arguments passed for format string
-      C:\Projects\427-programming-assignment-1\chewaTestServer.c(108,13):
-      placeholders and their parameters expect 0 variadic arguments, but 1 were provided
-  
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(126,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(136,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(149,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(159,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(95,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(102,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(141,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(151,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
 C:\Projects\427-programming-assignment-1\chewaTestServer.c(172,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(180,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(223,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(239,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(253,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(275,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(282,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(289,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(313,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(320,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(335,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(441,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(454,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(463,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(485,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(508,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(541,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(592,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(619,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(635,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(647,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(700,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(826,37): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(837,24): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(845,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(851,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(862,24): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(883,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(893,24): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(898,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(912,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(789,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(805,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(183,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(198,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(209,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(224,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(233,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(278,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(296,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(311,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(333,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(344,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(356,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(367,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(385,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(496,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(510,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(520,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(544,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(570,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(606,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(669,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(692,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(708,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(721,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(771,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(934,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(935,21): warning C4013: 'close' undefined; assuming extern returning int
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(964,52): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1044,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1077,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1094,43): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1149,43): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1191,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1199,44): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(866,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(923,27): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
   PokemonTradeServer.vcxproj -> C:\Projects\427-programming-assignment-1\PokemonTradeProject\x64\Debug\PokemonTradeServer.exe
