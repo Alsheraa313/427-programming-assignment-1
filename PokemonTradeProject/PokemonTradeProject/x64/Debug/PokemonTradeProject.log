@@ -1,4 +1,7 @@
 ﻿  chewaTestClient.c
-C:\Projects\427-programming-assignment-1\chewaTestClient.c(33,17): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestClient.c(78,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestClient.c(85,25): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestClient.c(92,56): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestClient.c(214,13): warning C4013: '_kbhit' undefined; assuming extern returning int
+C:\Projects\427-programming-assignment-1\chewaTestClient.c(259,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestClient.c(116,21): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
   PokemonTradeProject.vcxproj -> C:\Projects\427-programming-assignment-1\PokemonTradeProject\x64\Debug\PokemonTradeClient.exe

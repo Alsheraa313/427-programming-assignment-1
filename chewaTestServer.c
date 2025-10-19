@@ -11,6 +11,15 @@
 #include "sqlite3.h"
 #include <windows.h>
 
+#include <string.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#define STRCMP_NOCASE _stricmp
+#else
+#include <strings.h> // for strcasecmp
+#define STRCMP_NOCASE strcasecmp
+#endif
+
 // --- Windows equivalents of pthreads ---
 typedef CRITICAL_SECTION pthread_mutex_t;
 
@@ -108,7 +117,7 @@ int handleLoginCommand(sqlite3* db, int clientSocket, char* args)
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
     {
-        fprintf(stderr, sqlite3_errmsg(db));
+        fprintf(stderr, "SQLite prepare failed: %s\n", sqlite3_errmsg(db));
         return 0;
     }
 
@@ -123,33 +132,44 @@ int handleLoginCommand(sqlite3* db, int clientSocket, char* args)
         sqlite3_finalize(stmt);
 
         ActiveClient newClient;
+        memset(&newClient, 0, sizeof(newClient));
 
         strncpy(newClient.username, username, sizeof(newClient.username) - 1);
-        newClient.username[sizeof(newClient.username) - 1] = '\0';
-
-        strncpy(newClient.ip, "127.0.0.1", sizeof(newClient.ip) - 1);
-        newClient.ip[sizeof(newClient.ip) - 1] = '\0';
-
         newClient.is_root = isRoot;
 
-        active_clients[active_count] = newClient;
-        active_count++;
+        // --- NEW: Get actual client IP address ---
+        struct sockaddr_in addr;
+        socklen_t addr_len = sizeof(addr);
+        if (getpeername(clientSocket, (struct sockaddr*)&addr, &addr_len) == 0)
+        {
+            inet_ntop(AF_INET, &addr.sin_addr, newClient.ip, sizeof(newClient.ip));
+        }
+        else
+        {
+            // Fallback to localhost if lookup fails
+            strncpy(newClient.ip, "127.0.0.1", sizeof(newClient.ip) - 1);
+            newClient.ip[sizeof(newClient.ip) - 1] = '\0';
+        }
 
-        printf("User '%s' logged in Active clients: %d\n", username, active_count);
+        // --- Store active client ---
+        active_clients[active_count++] = newClient;
 
-        const char* successMsg = "200 OK\nAvailable commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\n";
+        printf("User '%s' logged in from %s | Active clients: %d\n",
+            newClient.username, newClient.ip, active_count);
+
+        const char* successMsg =
+            "200 OK\n"
+            "Login successful!\n"
+            "Available commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
         send(clientSocket, successMsg, strlen(successMsg), 0);
 
         return 1;
     }
     else
     {
-
         sqlite3_finalize(stmt);
-
-        snprintf(response, sizeof(response), "403  Wrong UserID or Password\n");
+        snprintf(response, sizeof(response), "403 Wrong UserID or Password\n");
         send(clientSocket, response, strlen(response), 0);
-
         return 0;
     }
 }
@@ -670,50 +690,92 @@ void handleLookupCommand(sqlite3* db, int clientSocket, char* args)
 }
 
 
-// Only root can use this command so it should return an error message if the user is not a root
-// Server sends: 200 OK
-// Then it lists the active users, dispalys UserID and IP
-// Format:
-// The list of the active users:
-// John 141.215.69.202
-// root 127.0.0.1
 // Handles the WHO command
 // Expected format: WHO
 // This command (WHICH CAN ONLY BE USED BY THE ROOT USER) will display a list of the active users and the user's IP address
-void handleWhoCommand(sqlite3* db, int clientSocket, char* args)
+void handleWhoCommand(sqlite3* db, int clientSocket, char* username)
 {
     char response[4096];
     memset(response, 0, sizeof(response));
 
     (void)db;
-    (void)args;
-    snprintf(response, sizeof(response), "200 OK\nThis command has not been implemented yet.\n");
+
+    // Find the requesting user (case-insensitive)
+    int is_root_user = 0;
+    for (int i = 0; i < 10; i++)
+    {
+        if (strlen(active_clients[i].username) == 0)
+            continue;
+
+        if (STRCMP_NOCASE(active_clients[i].username, username) == 0)
+        {
+            is_root_user = active_clients[i].is_root;
+            break;
+        }
+    }
+
+    // Only root can use WHO
+    /*if (!is_root_user)
+    {
+        snprintf(response, sizeof(response),
+            "401 Unauthorized\nOnly the root user can execute the WHO command.\n");
+        send(clientSocket, response, strlen(response), 0);
+        return;
+    }*/
+
+    // Build the list of active users
+    snprintf(response, sizeof(response), "200 OK\nThe list of the active users:\n");
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (strlen(active_clients[i].username) == 0)
+            continue; // skip empty slots
+
+        char line[128];
+        snprintf(line, sizeof(line), "%s %s\n", active_clients[i].username, active_clients[i].ip);
+        strncat(response, line, sizeof(response) - strlen(response) - 1);
+    }
 
     send(clientSocket, response, strlen(response), 0);
 }
 
 
-// Only root user can list ALL records for ALL users
-// John should only return John records
 // Handles the LIST command.
-// Expected format: LIST <userID>
-// This command shows all Pokemon cards owned by a specific user.
-void handleListCommand(sqlite3* db, int clientSocket, char* args)
+// Expected format: LIST
+// This command shows all Pokemon cards owned by the current user (or all if root).
+void handleListCommand(sqlite3* db, int clientSocket, const char* username)
 {
-    int userID;
+    sqlite3_stmt* stmt;
+    char response[4096];
+    memset(response, 0, sizeof(response));
 
-    if (sscanf(args, "%d", &userID) != 1)
+    int is_root_user = 0;
+
+    // Check if the current user is root
+    for (int i = 0; i < 10; i++)
     {
-        const char* msg = "403 message format error\nUsage: LIST <OwnerID>\n";
-        send(clientSocket, msg, strlen(msg), 0);
-        return;
+        if (strlen(active_clients[i].username) == 0)
+            continue;
+
+        if (strcmp(active_clients[i].username, username) == 0)
+        {
+            is_root_user = active_clients[i].is_root;
+            break;
+        }
     }
 
-    sqlite3_stmt* stmt;
-
-    const char* query =
-        "SELECT id, card_name, card_type, rarity, count, owner_id "
-        "FROM pokemon_cards WHERE owner_id = ?;";
+    const char* query;
+    if (is_root_user)
+    {
+        // Root user can see all records
+        query = "SELECT id, card_name, card_type, rarity, count, owner_id FROM pokemon_cards;";
+    }
+    else
+    {
+        // Non-root users can only see their own records
+        query = "SELECT id, card_name, card_type, rarity, count, owner_id "
+            "FROM pokemon_cards WHERE owner_id = ?;";
+    }
 
     if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK)
     {
@@ -722,17 +784,25 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args)
         return;
     }
 
-    // Bind userID to the SQL query
-    sqlite3_bind_int(stmt, 1, userID);
+    // Bind username if not root
+    if (!is_root_user)
+        sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
 
-    char response[4096];
-    memset(response, 0, sizeof(response));
+    int response_len = 0;
 
-    int response_len = snprintf(response, sizeof(response),
-        "200 OK\nThe list of records in the Pokemon cards table for user %d:\n"
-        "---------------------------------------------------------------\n"
-        "ID   Card Name        Type        Rarity      Count  OwnerID\n",
-        userID);
+    if (is_root_user)
+    {
+        response_len = snprintf(response, sizeof(response),
+            "200 OK\nThe list of records in the cards database:\n"
+            "ID   Card Name        Type        Rarity      Count  OwnerID\n");
+    }
+    else
+    {
+        response_len = snprintf(response, sizeof(response),
+            "200 OK\nThe list of records in the Pokemon cards table for current user, %s:\n"
+            "ID   Card Name        Type        Rarity      Count  OwnerID\n",
+            username);
+    }
 
     int found = 0; // Tracks if any cards were found
 
@@ -744,30 +814,27 @@ void handleListCommand(sqlite3* db, int clientSocket, char* args)
         const char* cardType = (const char*)sqlite3_column_text(stmt, 2);
         const char* rarity = (const char*)sqlite3_column_text(stmt, 3);
         int count = sqlite3_column_int(stmt, 4);
-        int owner = sqlite3_column_int(stmt, 5);
+        const char* owner = (const char*)sqlite3_column_text(stmt, 5);
 
-        // Append the card info to the response string
         int written = snprintf(response + response_len, sizeof(response) - response_len,
-            "%-4d %-15s %-11s %-11s %-6d %-6d\n",
+            "%-4d %-15s %-11s %-11s %-6d %-6s\n",
             id, cardName, cardType, rarity, count, owner);
 
-        // Stop writing if we run out of buffer space
         if (written < 0 || written >= (int)(sizeof(response) - response_len - 1))
             break;
 
         response_len += written;
         found = 1;
     }
+
     sqlite3_finalize(stmt);
 
-    // If the user has no cards, return a message stating that
     if (!found)
     {
         response_len = snprintf(response, sizeof(response),
-            "200 OK\nNo cards found for user %d.\n", userID);
+            "200 OK\nNo cards found for user %s.\n", username);
     }
 
-    // Send final formatted response to the client
     send(clientSocket, response, strlen(response), 0);
 }
 
@@ -796,6 +863,11 @@ int main()
 #endif
         return 1;
     }
+
+    pthread_mutex_init(&db_mutex, NULL);
+    pthread_mutex_init(&active_clients_mutex, NULL);
+
+
     fprintf(stderr, "Opened database successfully\n");
 
     // Create "users" table if it doesn't already exist
@@ -902,7 +974,7 @@ int main()
         max_fd = serverSocket;
 
     const char* loginPrompt = "Enter LOGIN followed by username and password\n";
-    const char* serverPrompt = "Available commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\n";
+    const char* serverPrompt = "Available commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
 
     while (1)
     {
@@ -1022,20 +1094,37 @@ int main()
                 // expect LOGIN <username> <password>
                 if (strncmp(buf, "LOGIN", 5) == 0)
                 {
-                    char user[50], pass[50];
-                    user[0] = pass[0] = '\0';
-                    sscanf(buf + 6, "%49s %49s", user, pass);
-                    // Call handler which will add to active_clients on success
-                    pthread_mutex_lock(&db_mutex);
-                    pthread_mutex_lock(&active_clients_mutex);
-                    int ok = handleLoginCommand(db, sd, buf + 6);
-                    pthread_mutex_unlock(&active_clients_mutex);
-                    pthread_mutex_unlock(&db_mutex);
-                    if (ok)
-                    {
-                        login_status[i] = 1;
-                        strncpy(username_by_slot[i], user, sizeof(username_by_slot[i]) - 1);
-                        username_by_slot[i][sizeof(username_by_slot[i]) - 1] = '\0';
+                    char user[50] = { 0 };
+                    char pass[50] = { 0 };
+
+                    // Check if there is actually something after "LOGIN"
+                    if (strlen(buf) <= 6) {
+                        const char* msg = "Usage: LOGIN <username> <password>\n";
+                        send(sd, msg, strlen(msg), 0);
+                    }
+                    else {
+                        int extracted = sscanf(buf + 6, "%49s %49s", user, pass);
+                        if (extracted != 2) {
+                            const char* msg = "Usage: LOGIN <username> <password>\n";
+                            send(sd, msg, strlen(msg), 0);
+                        }
+                        else {
+                            pthread_mutex_lock(&db_mutex);
+                            pthread_mutex_lock(&active_clients_mutex);
+                            int ok = handleLoginCommand(db, sd, buf + 6);
+                            pthread_mutex_unlock(&active_clients_mutex);
+                            pthread_mutex_unlock(&db_mutex);
+                            if (ok)
+                            {
+                                login_status[i] = 1;
+                                strncpy(username_by_slot[i], user, sizeof(username_by_slot[i]) - 1);
+                                username_by_slot[i][sizeof(username_by_slot[i]) - 1] = '\0';
+
+                                send(sd, "Login successful!\n", 19, 0);
+                                send(sd, serverPrompt, strlen(serverPrompt), 0);
+                            }
+
+                        }
                     }
                 }
                 else
