@@ -874,14 +874,14 @@ void handleLookupCommand(sqlite3 *db, int clientSocket, char *args)
 // Handles the WHO command
 // Expected format: WHO
 // This command (WHICH CAN ONLY BE USED BY THE ROOT USER) will display a list of the active users and the user's IP address
-void handleWhoCommand(sqlite3 *db, int clientSocket, char *username)
+void handleWhoCommand(sqlite3* db, int clientSocket, char* username)
 {
     char response[4096];
     memset(response, 0, sizeof(response));
 
-    (void)db;
+    (void)db; // Not used in this function
 
-    // Find the requesting user (case-insensitive)
+    // Check if the requesting user is root
     int is_root_user = 0;
     for (int i = 0; i < 10; i++)
     {
@@ -894,6 +894,15 @@ void handleWhoCommand(sqlite3 *db, int clientSocket, char *username)
             break;
         }
     }
+
+    // If not root, send 401 Unauthorized
+    if (!is_root_user)
+    {
+        const char* unauth_msg = "401 Unauthorized: Only root user can execute WHO\n";
+        send(clientSocket, unauth_msg, strlen(unauth_msg), 0);
+        return;
+    }
+
     // Build the list of active users
     snprintf(response, sizeof(response), "200 OK\nThe list of the active users:\n");
 
@@ -907,54 +916,52 @@ void handleWhoCommand(sqlite3 *db, int clientSocket, char *username)
         strncat(response, line, sizeof(response) - strlen(response) - 1);
     }
 
+    // Send the response to the client
     send(clientSocket, response, strlen(response), 0);
 }
 
 // Handles the LIST command.
 // Expected format: LIST
-// This command shows all Pokemon cards owned by the current user (or all if root).
-void handleListCommand(sqlite3 *db, int clientSocket, const char *username)
+// Shows all Pokémon cards owned by the current user (or all if root)
+void handleListCommand(sqlite3* db, int clientSocket, const char* username)
 {
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     char response[4096];
     memset(response, 0, sizeof(response));
 
     int is_root_user = 0;
 
-    // Check if the current user is root
+    // Check if current user is root (case-insensitive)
     for (int i = 0; i < 10; i++)
     {
         if (strlen(active_clients[i].username) == 0)
             continue;
 
-        if (strcmp(active_clients[i].username, username) == 0)
+        if (strcasecmp(active_clients[i].username, username) == 0)
         {
             is_root_user = active_clients[i].is_root;
             break;
         }
     }
 
-    const char *query;
+    const char* query;
     if (is_root_user)
     {
-        // Root user can see all records
         query = "SELECT id, card_name, card_type, rarity, count, owner_id FROM pokemon_cards;";
     }
     else
     {
-        // Non-root users can only see their own records
         query = "SELECT id, card_name, card_type, rarity, count, owner_id "
-                "FROM pokemon_cards WHERE owner_id = ?;";
+            "FROM pokemon_cards WHERE owner_id = ?;";
     }
 
     if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK)
     {
-        const char *msg = "400 invalid command\nDatabase error while listing cards.\n";
+        const char* msg = "400 invalid command\nDatabase error while listing cards.\n";
         send(clientSocket, msg, strlen(msg), 0);
         return;
     }
 
-    // Bind username if not root
     if (!is_root_user)
         sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
 
@@ -963,32 +970,31 @@ void handleListCommand(sqlite3 *db, int clientSocket, const char *username)
     if (is_root_user)
     {
         response_len = snprintf(response, sizeof(response),
-                                "200 OK\nThe list of records in the cards database:\n"
-                                "ID   Card Name        Type        Rarity      Count  OwnerID\n");
+            "200 OK\nThe list of records in the cards database:\n"
+            "ID   Card Name        Type        Rarity      Count  OwnerID\n");
     }
     else
     {
         response_len = snprintf(response, sizeof(response),
-                                "200 OK\nThe list of records in the Pokemon cards table for current user, %s:\n"
-                                "ID   Card Name        Type        Rarity      Count  OwnerID\n",
-                                username);
+            "200 OK\nThe list of records in the Pokemon cards table for current user, %s:\n"
+            "ID   Card Name        Type        Rarity      Count  OwnerID\n",
+            username);
     }
 
-    int found = 0; // Tracks if any cards were found
+    int found = 0;
 
-    // Loop through each result row and format card info
     while (sqlite3_step(stmt) == SQLITE_ROW)
     {
         int id = sqlite3_column_int(stmt, 0);
-        const char *cardName = (const char *)sqlite3_column_text(stmt, 1);
-        const char *cardType = (const char *)sqlite3_column_text(stmt, 2);
-        const char *rarity = (const char *)sqlite3_column_text(stmt, 3);
+        const char* cardName = (const char*)sqlite3_column_text(stmt, 1);
+        const char* cardType = (const char*)sqlite3_column_text(stmt, 2);
+        const char* rarity = (const char*)sqlite3_column_text(stmt, 3);
         int count = sqlite3_column_int(stmt, 4);
-        const char *owner = (const char *)sqlite3_column_text(stmt, 5);
+        const char* owner = (const char*)sqlite3_column_text(stmt, 5);
 
         int written = snprintf(response + response_len, sizeof(response) - response_len,
-                               "%-4d %-15s %-11s %-11s %-6d %-6s\n",
-                               id, cardName, cardType, rarity, count, owner);
+            "%-4d %-15s %-11s %-11s %-6d %-6s\n",
+            id, cardName, cardType, rarity, count, owner);
 
         if (written < 0 || written >= (int)(sizeof(response) - response_len - 1))
             break;
@@ -1002,7 +1008,7 @@ void handleListCommand(sqlite3 *db, int clientSocket, const char *username)
     if (!found)
     {
         response_len = snprintf(response, sizeof(response),
-                                "200 OK\nNo cards found for user %s.\n", username);
+            "200 OK\nNo cards found for user %s.\n", username);
     }
 
     send(clientSocket, response, strlen(response), 0);
