@@ -160,7 +160,7 @@ int handleLoginCommand(sqlite3* db, int clientSocket, char* args)
         const char* successMsg =
             "200 OK\n"
             "Login successful!\n"
-            "Available commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
+            "Available commands: BUY, SELL, BALANCE, DEPOSIT, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
         send(clientSocket, successMsg, strlen(successMsg), 0);
 
         return 1;
@@ -564,6 +564,68 @@ void handleBalanceCommand(sqlite3* db, int clientSocket, char* args, const char*
     send(clientSocket, response, strlen(response), 0);
 }
 
+void handleDepositCommand(sqlite3* db, int clientSocket, char* args, const char* serverPrompt)
+{
+    int userID;
+    double amount;
+
+    if (sscanf(args, "%d %lf", &userID, &amount) != 2 || amount <= 0)
+    {
+        const char* errMsg = "403 message format error\nUsage: DEPOSIT <OwnerID> <amount>\n";
+        send(clientSocket, errMsg, strlen(errMsg), 0);
+        return;
+    }
+
+    sqlite3_stmt* stmt;
+    const char* updateSQL = "UPDATE users SET usd_balance = usd_balance + ? WHERE ID = ?;";
+
+    if (sqlite3_prepare_v2(db, updateSQL, -1, &stmt, NULL) != SQLITE_OK)
+    {
+        const char* errMsg = "400 invalid command\nDatabase error while processing deposit.\n";
+        send(clientSocket, errMsg, strlen(errMsg), 0);
+        return;
+    }
+
+    sqlite3_bind_double(stmt, 1, amount);
+    sqlite3_bind_int(stmt, 2, userID);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+    {
+        const char* errMsg = "400 invalid command\nFailed to update balance.\n";
+        send(clientSocket, errMsg, strlen(errMsg), 0);
+        sqlite3_finalize(stmt);
+        return;
+    }
+
+    sqlite3_finalize(stmt);
+
+    // Retrieve updated balance
+    const char* querySQL = "SELECT usd_balance FROM users WHERE ID = ?;";
+    if (sqlite3_prepare_v2(db, querySQL, -1, &stmt, NULL) != SQLITE_OK)
+    {
+        const char* errMsg = "400 invalid command\nDatabase error while retrieving balance.\n";
+        send(clientSocket, errMsg, strlen(errMsg), 0);
+        return;
+    }
+
+    sqlite3_bind_int(stmt, 1, userID);
+
+    char response[256];
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        double newBalance = sqlite3_column_double(stmt, 0);
+        snprintf(response, sizeof(response), "200 OK\nNew Balance: %.2f USD\n%s", newBalance, serverPrompt);
+    }
+    else
+    {
+        snprintf(response, sizeof(response), "400 invalid command\n");
+    }
+
+    sqlite3_finalize(stmt);
+    send(clientSocket, response, strlen(response), 0);
+}
+
 
 // Handles the LOOKUP command
 //  Expected format: LOOKUP <card_name> || <type> || <rarity>
@@ -707,22 +769,12 @@ void handleWhoCommand(sqlite3* db, int clientSocket, char* username)
         if (strlen(active_clients[i].username) == 0)
             continue;
 
-        if (STRCMP_NOCASE(active_clients[i].username, username) == 0)
+        if (strcasecmp(active_clients[i].username, username) == 0)
         {
             is_root_user = active_clients[i].is_root;
             break;
         }
     }
-
-    // Only root can use WHO
-    /*if (!is_root_user)
-    {
-        snprintf(response, sizeof(response),
-            "401 Unauthorized\nOnly the root user can execute the WHO command.\n");
-        send(clientSocket, response, strlen(response), 0);
-        return;
-    }*/
-
     // Build the list of active users
     snprintf(response, sizeof(response), "200 OK\nThe list of the active users:\n");
 
@@ -974,7 +1026,7 @@ int main()
         max_fd = serverSocket;
 
     const char* loginPrompt = "Enter LOGIN followed by username and password\n";
-    const char* serverPrompt = "Available commands: BUY, SELL, BALANCE, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
+    const char* serverPrompt = "Available commands: BUY, SELL, BALANCE, DEPOSIT, LIST, QUIT, LOGOUT, WHO, LOOKUP\nEnter message to send to server: ";
 
     while (1)
     {
@@ -1053,7 +1105,9 @@ int main()
 
             nready--;
             char buf[512];
+
             memset(buf, 0, sizeof(buf));
+
             int bytes = recv(sd, buf, sizeof(buf) - 1, 0);
             if (bytes <= 0)
             {
@@ -1111,10 +1165,10 @@ int main()
                         else {
                             pthread_mutex_lock(&db_mutex);
                             pthread_mutex_lock(&active_clients_mutex);
-                            int ok = handleLoginCommand(db, sd, buf + 6);
+                            int success = handleLoginCommand(db, sd, buf + 6);
                             pthread_mutex_unlock(&active_clients_mutex);
                             pthread_mutex_unlock(&db_mutex);
-                            if (ok)
+                            if (success)
                             {
                                 login_status[i] = 1;
                                 strncpy(username_by_slot[i], user, sizeof(username_by_slot[i]) - 1);
@@ -1151,6 +1205,10 @@ int main()
                 else if (strncmp(buf, "SELL", 4) == 0)
                 {
                     handleSellCommand(db, sd, buf + 5, serverPrompt);
+                }
+                else if (strncmp(buf, "DEPOSIT", 7) == 0)
+                {
+                    handleDepositCommand(db, sd, buf + 8, serverPrompt);
                 }
                 else if (strncmp(buf, "WHO", 3) == 0)
                 {
@@ -1279,10 +1337,6 @@ int main()
                     const char* msg = "Invalid command\n";
                     send(sd, msg, strlen(msg), 0);
                 }
-
-                /* After processing a command, if the client is still connected
-                   and still marked as logged in, re-send the menu prompt so
-                   the client always sees the available commands. */
                 if (client_sockets[i] != -1 && login_status[i] == 1)
                 {
                     send(sd, serverPrompt, strlen(serverPrompt), 0);
