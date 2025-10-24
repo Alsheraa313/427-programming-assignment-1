@@ -1,44 +1,105 @@
 ﻿  chewaTestServer.c
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(104,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(111,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(164,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(172,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(192,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(203,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(218,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(229,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(244,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(253,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(298,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(316,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(331,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(353,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(364,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(376,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(387,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(405,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(516,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(530,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(540,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(564,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(590,13): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(626,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(689,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(739,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(783,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(838,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1006,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1007,21): warning C4013: 'close' undefined; assuming extern returning int
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1036,52): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1103,39): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1109,43): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1124,56): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1133,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1166,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1183,43): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1238,43): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1280,35): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(1288,44): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(938,24): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
-C:\Projects\427-programming-assignment-1\chewaTestServer.c(995,27): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(96,9): warning C4005: 'pthread_mutex_init': macro redefinition
+      C:\Projects\427-programming-assignment-1\chewaTestServer.c(20,9):
+      see previous definition of 'pthread_mutex_init'
+  
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(97,9): warning C4005: 'pthread_mutex_lock': macro redefinition
+      C:\Projects\427-programming-assignment-1\chewaTestServer.c(18,9):
+      see previous definition of 'pthread_mutex_lock'
+  
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(98,9): warning C4005: 'pthread_mutex_unlock': macro redefinition
+      C:\Projects\427-programming-assignment-1\chewaTestServer.c(19,9):
+      see previous definition of 'pthread_mutex_unlock'
+  
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(99,9): warning C4005: 'pthread_mutex_destroy': macro redefinition
+      C:\Projects\427-programming-assignment-1\chewaTestServer.c(21,9):
+      see previous definition of 'pthread_mutex_destroy'
+  
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(109,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(109,5): warning C4024: 'InitializeCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(110,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(110,5): warning C4024: 'InitializeCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(115,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(115,5): warning C4024: 'DeleteCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(116,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(116,5): warning C4024: 'DeleteCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(153,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'HANDLE *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(153,5): warning C4024: 'InitializeCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(159,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'HANDLE *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(159,5): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(166,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'HANDLE *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(166,5): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(171,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'HANDLE *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(171,5): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(178,5): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'HANDLE *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(178,5): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(229,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(236,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(288,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(296,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(315,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(326,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(341,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(352,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(367,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(376,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(421,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(438,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(453,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(475,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(486,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(498,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(509,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(527,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(638,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(651,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(661,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(685,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(696,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(706,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(716,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(728,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(747,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(772,14): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(808,38): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(871,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(910,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(953,33): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1008,34): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1055,25): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1055,25): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1056,25): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1056,25): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1058,25): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1058,25): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1059,25): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1059,25): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1067,52): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1097,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1097,17): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1108,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1108,17): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1111,39): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1116,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1116,17): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1127,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1127,17): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1156,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1156,17): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1166,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1166,17): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1172,39): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1174,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1174,17): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1190,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1190,17): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1219,40): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1388,20): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1459,36): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1487,48): warning C4267: 'function': conversion from 'size_t' to 'int', possible loss of data
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1512,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1512,17): warning C4024: 'EnterCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1523,17): warning C4047: 'function': 'LPCRITICAL_SECTION' differs in levels of indirection from 'thread_mutex_t *'
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1523,17): warning C4024: 'LeaveCriticalSection': different types for formal and actual parameter 1
+C:\Projects\427-programming-assignment-1\chewaTestServer.c(1449,27): warning C4244: 'initializing': conversion from 'SOCKET' to 'int', possible loss of data
   PokemonTradeServer.vcxproj -> C:\Projects\427-programming-assignment-1\PokemonTradeProject\x64\Debug\PokemonTradeServer.exe

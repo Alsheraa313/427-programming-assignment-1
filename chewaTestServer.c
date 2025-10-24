@@ -3,28 +3,92 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
+#ifdef _WIN32
+// --- POSIX → Windows mappings ---
+#define pthread_cond_t HANDLE
+#define pthread_cond_init(cond, attr) (*(cond) = CreateEvent(NULL, FALSE, FALSE, NULL))
+#define pthread_cond_signal(cond) SetEvent(*(cond))
+#define pthread_cond_wait(cond, mutex) WaitForSingleObject(*(cond), INFINITE)
+
+#define pthread_mutex_lock(mutex) WaitForSingleObject(*(mutex), INFINITE)
+#define pthread_mutex_unlock(mutex) ReleaseMutex(*(mutex))
+#define pthread_mutex_init(mutex, attr) (*(mutex) = CreateMutex(NULL, FALSE, NULL))
+#define pthread_mutex_destroy(mutex) CloseHandle(*(mutex))
+
+#define STRCMP_NOCASE _stricmp
+#else
 #include <pthread.h>
+#include <strings.h>
+#define STRCMP_NOCASE strcasecmp
+#endif
+
+
+#ifdef _WIN32
+#include "sqlite3.h"
+#else
 #include <sqlite3.h>
+#endif
+
+
+// --- Platform-specific includes ---
+#ifdef _WIN32
+    // Windows sockets & threading
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#pragma comment(lib, "ws2_32.lib")
+
+// Make POSIX-style names work cross-platform
+#define close closesocket
+#define sleep(x) Sleep(1000 * (x))
+
+// Thread synchronization
+typedef HANDLE thread_mutex_t;
+typedef HANDLE thread_cond_t;
+
+#else   // ---------- Linux / macOS ----------
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#include "sqlite3.h"
-#include <windows.h>
+typedef pthread_mutex_t thread_mutex_t;
+typedef pthread_cond_t  thread_cond_t;
+#endif
 
-#include <string.h>
+// --- Case-insensitive string compare ---
 #ifdef _WIN32
-#include <winsock2.h>
 #define STRCMP_NOCASE _stricmp
 #else
-#include <strings.h> // for strcasecmp
+#include <strings.h>
 #define STRCMP_NOCASE strcasecmp
 #endif
+
+// --- Constants ---
+#define MAX_TASKS 100
+#define NUM_WORKERS 4
+
+// --- Globals ---
+sqlite3* db;
+thread_mutex_t db_mutex;
+thread_mutex_t active_clients_mutex;
+
+int client_sockets[FD_SETSIZE];
+int serverSocket;
+int login_status[FD_SETSIZE]; // 0 = not logged in, 1 = logged in
+char username_by_slot[FD_SETSIZE][50];
+int conn_count = 0;
+fd_set master_set;
+
+
 
 // --- Windows equivalents of pthreads ---
 typedef CRITICAL_SECTION pthread_mutex_t;
@@ -35,8 +99,8 @@ typedef CRITICAL_SECTION pthread_mutex_t;
 #define pthread_mutex_destroy(m) DeleteCriticalSection(m)
 
 // Initialize the mutexes like pthread style
-pthread_mutex_t active_clients_mutex;
-pthread_mutex_t db_mutex;
+thread_mutex_t active_clients_mutex;
+thread_mutex_t db_mutex;
 
 sqlite3 *db;
 
@@ -52,33 +116,6 @@ static void destroy_mutexes()
     pthread_mutex_destroy(&db_mutex);
 }
 
-#else
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sqlite3.h>
-#include <pthread.h>
-
-#define MAX_TASKS 100
-#define NUM_WORKERS 4
-
-// --- Globals ---
-sqlite3 *db;
-pthread_mutex_t db_mutex;
-pthread_mutex_t active_clients_mutex;
-
-int client_sockets[FD_SETSIZE];
-int serverSocket;
-int login_status[FD_SETSIZE]; // 0 = not logged in, 1 = logged in
-char username_by_slot[FD_SETSIZE][50];
-int conn_count = 0;
-fd_set master_set;
-
-#define MAX_TASKS 100
-
 typedef struct
 {
     int client_socket;
@@ -89,9 +126,23 @@ typedef struct
 {
     Task tasks[MAX_TASKS];
     int front, rear, count;
+
+#ifdef _WIN32
+    HANDLE mutex;
+    HANDLE cond;
+#else
     pthread_mutex_t mutex;
     pthread_cond_t cond;
+#endif
+
 } TaskQueue;
+
+#ifdef _WIN32
+HANDLE cond;
+#else
+pthread_cond_t cond;
+#endif
+
 
 TaskQueue workQueue;
 
@@ -128,10 +179,14 @@ Task dequeue(TaskQueue *q)
     return t;
 }
 
+sqlite3* db;
+
+#ifdef _WIN32
+HANDLE active_clients_mutex;
+HANDLE db_mutex;
+#else
 pthread_mutex_t active_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
-sqlite3 *db;
-
 #endif
 
 // struct that holds client info of whoever is logged in
@@ -1169,31 +1224,48 @@ void *workerThread(void *arg)
 
 void startWorkerPool()
 {
+#ifdef _WIN32
+    HANDLE threads[NUM_WORKERS];
+    for (int i = 0; i < NUM_WORKERS; ++i)
+    {
+        threads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workerThread, NULL, 0, NULL);
+
+        if (threads[i] == NULL)
+        {
+            fprintf(stderr, "Failed to create thread %d\n", i);
+        }
+        else
+        {
+            CloseHandle(threads[i]);
+        }
+    }
+#else
     pthread_t threads[NUM_WORKERS];
     for (int i = 0; i < NUM_WORKERS; ++i)
     {
         pthread_create(&threads[i], NULL, workerThread, NULL);
         pthread_detach(threads[i]);
     }
+#endif
 }
+
 
 int main()
 {
-
 #ifdef _WIN32
     // Initialize Winsock on Windows for network communication
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
-        printf("Failed to initialize Winsock\n");
+        fprintf(stderr, "Failed to initialize Winsock\n");
         return 1;
     }
 #endif
 
-    // Open or create the SQLite database named "users.db"
-    char *zErrMsg = 0;
+    // --- Open or create the SQLite database ---
+    char* zErrMsg = NULL;
     int rc = sqlite3_open("users.db", &db);
-    if (rc)
+    if (rc != SQLITE_OK)
     {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 #ifdef _WIN32
@@ -1202,74 +1274,116 @@ int main()
         return 1;
     }
 
+    // Enable foreign keys (SQLite ignores them unless explicitly turned on)
+    rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON;", NULL, NULL, &zErrMsg);
+    if (rc != SQLITE_OK)
+    {
+        const char* msg = zErrMsg ? zErrMsg : sqlite3_errmsg(db);
+        fprintf(stderr, "SQL error (PRAGMA foreign_keys): %s\n", msg);
+        if (zErrMsg) sqlite3_free(zErrMsg);
+        zErrMsg = NULL;
+    }
+
+    // Initialize mutexes
+#ifdef _WIN32
+    db_mutex = CreateMutex(NULL, FALSE, NULL);
+    active_clients_mutex = CreateMutex(NULL, FALSE, NULL);
+#else
     pthread_mutex_init(&db_mutex, NULL);
     pthread_mutex_init(&active_clients_mutex, NULL);
+#endif
 
     fprintf(stderr, "Opened database successfully\n");
 
-    // Create "users" table if it doesn't already exist
-    char *sql = "CREATE TABLE IF NOT EXISTS users ("
-                "ID INTEGER PRIMARY KEY,"
-                "first_name TEXT,"
-                "last_name TEXT,"
-                "user_name TEXT NOT NULL,"
-                "password TEXT,"
-                "usd_balance DOUBLE NOT NULL,"
-                "is_root INTEGER NOT NULL DEFAULT 0);";
+    // --- Create "users" table ---
+    zErrMsg = NULL;
+    const char* sql_users =
+        "CREATE TABLE IF NOT EXISTS users ("
+        "ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "first_name TEXT,"
+        "last_name TEXT,"
+        "user_name TEXT NOT NULL UNIQUE,"
+        "password TEXT,"
+        "usd_balance REAL NOT NULL DEFAULT 0,"
+        "is_root INTEGER NOT NULL DEFAULT 0"
+        ");";
 
-    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    rc = sqlite3_exec(db, sql_users, NULL, 0, &zErrMsg);
     if (rc != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error (create table): %s\n", zErrMsg);
+        fprintf(stderr, "SQL error (create users table): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        zErrMsg = NULL;
+    }
+    else
+    {
+        printf("Users table created or already exists.\n");
     }
 
-    // Insert users into the table
-    sql = "INSERT OR IGNORE INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES "
-          "(1, 'Branch', 'Tree', 'Root', 'Root01', 100, 1),"
-          "(2, 'Ms', 'Partner', 'Mary', 'Mary01', 50, 0),"
-          "(3, 'Mr', 'Dude', 'John', 'John01', 200, 0),"
-          "(4, 'Ms', 'Misses', 'Moe', 'Moe01', 300, 0);";
+    // --- Insert users ---
+    const char* sql_insert_users =
+        "INSERT OR IGNORE INTO users (ID, first_name, last_name, user_name, password, usd_balance, is_root) VALUES "
+        "(1, 'Branch', 'Tree', 'Root', 'Root01', 100, 1),"
+        "(2, 'Ms', 'Partner', 'Mary', 'Mary01', 50, 0),"
+        "(3, 'Mr', 'Dude', 'John', 'John01', 200, 0),"
+        "(4, 'Ms', 'Misses', 'Moe', 'Moe01', 300, 0);";
 
-    rc = sqlite3_exec(db, sql, 0, 0, &zErrMsg);
+    rc = sqlite3_exec(db, sql_insert_users, NULL, NULL, &zErrMsg);
     if (rc != SQLITE_OK)
     {
         fprintf(stderr, "SQL error (insert users): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        zErrMsg = NULL;
+    }
+    else
+    {
+        printf("Default users inserted or already exist.\n");
     }
 
-    // Create "pokemon_cards" table if it doesn't exist
-    const char *create_pokemon_cards_table =
+    // --- Create "pokemon_cards" table ---
+    const char* sql_pokemon_cards =
         "CREATE TABLE IF NOT EXISTS pokemon_cards ("
-        "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "card_name TEXT NOT NULL, "
-        "card_type TEXT NOT NULL, "
-        "rarity TEXT NOT NULL, "
-        "count INTEGER NOT NULL, "
-        "owner_id INTEGER NOT NULL, "
-        "FOREIGN KEY(owner_id) REFERENCES users(ID), "
+        "ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "card_name TEXT NOT NULL,"
+        "card_type TEXT NOT NULL,"
+        "rarity TEXT NOT NULL,"
+        "count INTEGER NOT NULL,"
+        "owner_id INTEGER NOT NULL,"
+        "FOREIGN KEY(owner_id) REFERENCES users(ID),"
         "UNIQUE(card_name, card_type, rarity, owner_id)"
         ");";
 
-    rc = sqlite3_exec(db, create_pokemon_cards_table, NULL, NULL, &zErrMsg);
+    rc = sqlite3_exec(db, sql_pokemon_cards, NULL, NULL, &zErrMsg);
     if (rc != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error (create pokemon table): %s\n", zErrMsg);
+        fprintf(stderr, "SQL error (create pokemon_cards table): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        zErrMsg = NULL;
+    }
+    else
+    {
+        printf("Pokemon cards table created or already exists.\n");
     }
 
-    // Insert default Pokémon cards if they don't already exist
-    sql = "INSERT OR IGNORE INTO pokemon_cards (card_name, card_type, rarity, count, owner_id) VALUES "
-          "('Pikachu', 'Electric', 'Common', 2, 1),"
-          "('Charizard', 'Fire', 'Rare', 3, 2),"
-          "('Squirtle', 'Water', 'Uncommon', 30, 2);";
+    // --- Insert default Pokémon cards ---
+    const char* sql_insert_pokemon =
+        "INSERT OR IGNORE INTO pokemon_cards (card_name, card_type, rarity, count, owner_id) VALUES "
+        "('Pikachu', 'Electric', 'Common', 2, 1),"
+        "('Charizard', 'Fire', 'Rare', 3, 2),"
+        "('Squirtle', 'Water', 'Uncommon', 30, 2);";
 
-    rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+    rc = sqlite3_exec(db, sql_insert_pokemon, NULL, NULL, &zErrMsg);
     if (rc != SQLITE_OK)
     {
         fprintf(stderr, "SQL error (insert pokemon): %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        zErrMsg = NULL;
     }
+    else
+    {
+        printf("Default Pokemon inserted or already exist.\n");
+    }
+
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
