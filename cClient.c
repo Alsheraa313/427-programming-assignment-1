@@ -20,9 +20,31 @@
 
 static volatile int running = 1;
 
+#ifdef _WIN32
+#include <windows.h>
+HANDLE print_mutex;
+#else
+#include <pthread.h>
+pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+void safe_print(const char* msg) {
+#ifdef _WIN32
+    WaitForSingleObject(print_mutex, INFINITE);
+    printf("%s", msg);
+    fflush(stdout);
+    ReleaseMutex(print_mutex);
+#else
+    pthread_mutex_lock(&print_mutex);
+    printf("%s", msg);
+    fflush(stdout);
+    pthread_mutex_unlock(&print_mutex);
+#endif
+}
+
 // Thread that monitors server socket using select() and prints messages as they arrive
-void *receiver_thread(void *arg) {
-    int sock = *(int *)arg;
+void* receiver_thread(void* arg) {
+    int sock = *(int*)arg;
 
     while (running) {
         fd_set read_fds;
@@ -36,7 +58,8 @@ void *receiver_thread(void *arg) {
         if (rv < 0) {
             perror("select");
             break;
-        } else if (rv == 0) {
+        }
+        else if (rv == 0) {
             continue; // timeout - loop again
         }
 
@@ -44,7 +67,6 @@ void *receiver_thread(void *arg) {
             char buffer[RESPONSE_SIZE];
             int bytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
             if (bytes <= 0) {
-                printf("Server closed\n");
                 running = 0;
                 break;
             }
@@ -58,7 +80,7 @@ void *receiver_thread(void *arg) {
 }
 
 // Helper: send a command and wait for a single response (used for synchronous login)
-int send_command_and_wait_response(int sock, const char *cmd, char *out, size_t outlen) {
+int send_command_and_wait_response(int sock, const char* cmd, char* out, size_t outlen) {
     if (send(sock, cmd, strlen(cmd), 0) < 0) {
         perror("send");
         return -1;
@@ -85,11 +107,18 @@ int main() {
         printf("Failed to initialize Winsock\n");
         return 1;
     }
+    print_mutex = CreateMutex(NULL, FALSE, NULL);
+#else
+    pthread_mutex_init(&print_mutex, NULL);
 #endif
 
     int netSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (netSocket < 0) {
+#ifdef _WIN32
+        printf("socket failed with error: %d\n", WSAGetLastError());
+#else
         perror("socket");
+#endif
         return 1;
     }
 
@@ -98,38 +127,41 @@ int main() {
     server_address.sin_port = htons(9001);
     inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr);
 
-    int connectStatus = connect(netSocket, (struct sockaddr *)&server_address, sizeof(server_address));
+    int connectStatus = connect(netSocket, (struct sockaddr*)&server_address, sizeof(server_address));
     if (connectStatus < 0) {
-        perror("Connection failed");
 #ifdef _WIN32
+        printf("Connection failed with error: %d\n", WSAGetLastError());
         closesocket(netSocket);
         WSACleanup();
 #else
+        perror("Connection failed");
         close(netSocket);
 #endif
         return 1;
     }
 
     // Receive initial prompt
-    char serverResponse[RESPONSE_SIZE] = {0};
+    char serverResponse[RESPONSE_SIZE] = { 0 };
     int r = recv(netSocket, serverResponse, sizeof(serverResponse) - 1, 0);
     if (r > 0) {
         serverResponse[r] = '\0';
-        printf("%s\n", serverResponse);
+        safe_print(serverResponse);
+        safe_print("\n");
     }
 
     // Synchronous login loop: require the user to LOGIN before starting concurrent IO
     char userInput[512];
     char response[RESPONSE_SIZE];
     while (running) {
-        printf("Enter LOGIN <username> <password>: ");
+        safe_print("Enter LOGIN <username> <password>: ");
+        fflush(stdout);
         if (!fgets(userInput, sizeof(userInput), stdin)) {
             running = 0;
             break;
         }
         userInput[strcspn(userInput, "\n")] = 0;
         if (strncmp(userInput, "LOGIN", 5) != 0) {
-            printf("Please LOGIN first\n");
+            safe_print("Please LOGIN first\n");
             continue;
         }
 
@@ -137,14 +169,14 @@ int main() {
         memset(response, 0, sizeof(response));
         int len = send_command_and_wait_response(netSocket, userInput, response, sizeof(response));
         if (len <= 0) {
-            printf("Failed to receive response from server during login.\n");
+            safe_print("Failed to receive response from server during login.\n");
             running = 0;
             break;
         }
 
-        printf("%s\n", response);
+        safe_print(response);
+        safe_print("\n");
         if (strstr(response, "200 OK") != NULL) {
-            printf("Login successful\n");
             break;
         }
     }
@@ -160,14 +192,35 @@ int main() {
     }
 
     // Start receiver thread to monitor server messages concurrently
+#ifdef _WIN32
+    HANDLE threadHandle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiver_thread, &netSocket, 0, NULL);
+    if (threadHandle == NULL) {
+        printf("CreateThread failed with error: %lu\n", GetLastError());
+        running = 0;
+    }
+#else
     pthread_t tid;
     if (pthread_create(&tid, NULL, receiver_thread, &netSocket) != 0) {
         perror("pthread_create");
         running = 0;
     }
+#endif
 
-    
+    fflush(stdout);
+
     while (running) {
+#ifdef _WIN32
+        if (_kbhit()) {
+            if (!fgets(userInput, sizeof(userInput), stdin)) {
+                running = 0;
+                break;
+            }
+        }
+        else {
+            Sleep(100);
+            continue;
+        }
+#else
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(STDIN_FILENO, &read_fds);
@@ -180,8 +233,9 @@ int main() {
         if (rv < 0) {
             perror("select");
             break;
-        } else if (rv == 0) {
-            continue; // timeout
+        }
+        else if (rv == 0) {
+            continue;
         }
 
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
@@ -189,33 +243,48 @@ int main() {
                 running = 0;
                 break;
             }
-            userInput[strcspn(userInput, "\n")] = 0;
+        }
+        else {
+            continue;
+        }
+#endif
 
-            if (strlen(userInput) == 0) continue;
+        userInput[strcspn(userInput, "\n")] = 0;
+        if (strlen(userInput) == 0) {
+            fflush(stdout);
+            continue;
+        }
 
-            if (send(netSocket, userInput, strlen(userInput), 0) < 0) {
-                perror("send");
-                running = 0;
-                break;
-            }
+        if (send(netSocket, userInput, strlen(userInput), 0) < 0) {
+#ifdef _WIN32
+            printf("send failed with error: %d\n", WSAGetLastError());
+#else
+            perror("send");
+#endif
+            running = 0;
+            break;
+        }
 
-            if (strcmp(userInput, "QUIT") == 0) {
-
-            
-                running = 0;
-                break;
-            }
+        if (strcmp(userInput, "QUIT") == 0) {
+            running = 0;
+            break;
         }
     }
 
-    // Wait for receiver thread to exit
+#ifdef _WIN32
+    WaitForSingleObject(threadHandle, INFINITE);
+    CloseHandle(threadHandle);
+#else
     pthread_join(tid, NULL);
+#endif
 
 #ifdef _WIN32
     closesocket(netSocket);
     WSACleanup();
+    CloseHandle(print_mutex);
 #else
     close(netSocket);
+    pthread_mutex_destroy(&print_mutex);
 #endif
 
     return 0;
