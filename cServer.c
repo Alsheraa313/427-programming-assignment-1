@@ -67,20 +67,22 @@ static void destroy_mutexes()
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-// #include <sqlite3.h>
 #include <pthread.h>
 
 #define MAX_TASKS 100
 #define NUM_WORKERS 4
-
+//the mutex protects the database from being worked on by a bunch of threads at once
 sqlite3 *db;
 pthread_mutex_t db_mutex;
 pthread_mutex_t active_clients_mutex;
-int disconnect_list[FD_SETSIZE] = {0};
 pthread_mutex_t disconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-int server_shutdown = 0;
 pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+int disconnect_list[FD_SETSIZE] = {0}; 
+/*this comes in handy for tracking which clients need 
+to be disconnected with the shutdown
+*/
+int server_shutdown = 0;
+//a bool/flag for the shutdown status
 
 int client_sockets[FD_SETSIZE];
 
@@ -97,7 +99,9 @@ typedef struct
     int client_socket;
     char message[512];
 } Task;
-
+/*for tasks it has the client socket a thread will work on 
+(down in the workerthread function) and the message thatll be worked with
+*/
 typedef struct
 {
     Task tasks[MAX_TASKS];
@@ -106,6 +110,8 @@ typedef struct
     pthread_cond_t cond;
 } TaskQueue;
 
+/*were doing a queue for multithreading, the idea behind it is that we have a fixed size
+amount of tasks, then the tasks with the aformentioned client socket and message gets queued in to be wokred on */
 TaskQueue workQueue;
 
 void initQueue(TaskQueue *q)
@@ -115,7 +121,7 @@ void initQueue(TaskQueue *q)
     pthread_cond_init(&q->cond, NULL);
 }
 
-void enqueue(TaskQueue *q, Task t)
+void enqueue(TaskQueue *q, Task t) // we enqueue a new task so it can be worked on, more on that in the workerthread below
 {
     pthread_mutex_lock(&q->mutex);
     while (q->count == MAX_TASKS)
@@ -131,7 +137,7 @@ void enqueue(TaskQueue *q, Task t)
     pthread_mutex_unlock(&q->mutex);
 }
 
-Task dequeue(TaskQueue *q)
+Task dequeue(TaskQueue *q) //and once a worker thread is free it dequeues a task to work on
 {
     pthread_mutex_lock(&q->mutex);
     while (q->count == 0)
@@ -154,7 +160,7 @@ sqlite3 *db;
 
 #endif
 
-// struct that holds client info of whoever is logged in
+// basic struct to help track who is logged in at the given moment
 typedef struct
 {
     char username[50];
@@ -164,7 +170,6 @@ typedef struct
 
 ActiveClient active_clients[10];
 
-// this gets incremented whenever another client joins
 int active_count = 0;
 
 // standard sqlite callback function
@@ -189,7 +194,7 @@ int handleLoginCommand(sqlite3 *db, int clientSocket, char *args)
 
     if (sscanf(args, "%49s %49s", username, password) != 2)
     {
-        const char *msg = "403 syntax error: LOGIN <username> <password>\n";
+        const char *msg = "403 Wrong UserID or Password\n";
         send(clientSocket, msg, strlen(msg), 0);
         return 0;
     }
@@ -233,13 +238,12 @@ int handleLoginCommand(sqlite3 *db, int clientSocket, char *args)
             inet_ntop(AF_INET, &addr.sin_addr, newClient.ip, sizeof(newClient.ip));
         }
         else
-        {
-            // Fallback to localhost if lookup fails
-            strncpy(newClient.ip, "randomIP", sizeof(newClient.ip) - 1);
+        { //local IP fallback as a just incase
+            strncpy(newClient.ip, "127.0.0.1", sizeof(newClient.ip) - 1);
             newClient.ip[sizeof(newClient.ip) - 1] = '\0';
         }
 
-        // --- Store active client ---
+        //where any new client gets added to the active clients array mentioned above
         active_clients[active_count++] = newClient;
 
         printf("User '%s' logged in from %s | Active clients: %d\n",
@@ -642,7 +646,9 @@ void handleBalanceCommand(sqlite3 *db, int clientSocket, char *args, const char 
     sqlite3_finalize(stmt);
     send(clientSocket, response, strlen(response), 0);
 }
-
+// Handles the BALANCE command.
+// Expected format: BALANCE <userID>
+// This command takes input of a user ID and amount and then updates the USD balance of that user in the users table
 void handleDepositCommand(sqlite3 *db, int clientSocket, char *args, const char *serverPrompt)
 {
     int userID;
@@ -678,7 +684,7 @@ void handleDepositCommand(sqlite3 *db, int clientSocket, char *args, const char 
 
     sqlite3_finalize(stmt);
 
-    // Retrieve updated balance
+    
     const char *querySQL = "SELECT usd_balance FROM users WHERE ID = ?;";
     if (sqlite3_prepare_v2(db, querySQL, -1, &stmt, NULL) != SQLITE_OK)
     {
@@ -839,7 +845,6 @@ void handleWhoCommand(sqlite3 *db, int clientSocket, char *username, const char 
 
     (void)db;
 
-    // Find the requesting user
     int is_root_user = 0;
     const char *found_username = NULL;
     
@@ -855,25 +860,22 @@ void handleWhoCommand(sqlite3 *db, int clientSocket, char *username, const char 
     }
     pthread_mutex_unlock(&active_clients_mutex);
 
-    // Debug output to see what's happening
-    printf("WHO command requested by: '%s', is_root: %d\n", username, is_root_user);
 
-    // Check if user is root
     if (!is_root_user)
     {
-        snprintf(response, sizeof(response), "403 Forbidden: Only root user can use WHO command\n%s", serverPrompt);
+        snprintf(response, sizeof(response), "403 Error, Only root user can use WHO command\n%s", serverPrompt);
         send(clientSocket, response, strlen(response), 0);
         return;
     }
 
-    // Build the list of active users
+
     snprintf(response, sizeof(response), "200 OK\nThe list of the active users:\n");
 
     pthread_mutex_lock(&active_clients_mutex);
     for (int i = 0; i < active_count; ++i)
     {
         if (strlen(active_clients[i].username) == 0)
-            continue; // skip empty slots
+            continue;
 
         char line[128];
         snprintf(line, sizeof(line), "%s %s\n", active_clients[i].username, active_clients[i].ip);
@@ -1025,6 +1027,10 @@ void *workerThread(void *arg)
 
         buf[strcspn(buf, "\r\n")] = 0;
 
+
+        printf("Client %d Command received: %s\n", sd, buf);
+        fflush(stdout);
+
         int slot = -1;
         for (int i = 0; i < FD_SETSIZE; ++i)
         {
@@ -1140,74 +1146,59 @@ void *workerThread(void *arg)
                 conn_count--;
             }
             else if (strcmp(buf, "SHUTDOWN") == 0)
-            {
-                char requester[50] = "";
-                int slot_index = -1;
+{
+    char requester[50] = "";
+    int slot_index = -1;
 
-                // Find which slot the requester is in
-                for (int i = 0; i < FD_SETSIZE; ++i)
-                {
-                    if (client_sockets[i] == sd)
-                    {
-                        slot_index = i;
-                        break;
-                    }
-                }
+    // Find which slot the requester is in
+    for (int i = 0; i < FD_SETSIZE; ++i)
+    {
+        if (client_sockets[i] == sd)
+        {
+            slot_index = i;
+            break;
+        }
+    }
 
-                // Get requester username
-                if (slot_index != -1 && username_by_slot[slot_index][0] != '\0')
-                {
-                    strncpy(requester, username_by_slot[slot_index], sizeof(requester) - 1);
-                    requester[sizeof(requester) - 1] = '\0';
-                }
+    // Get requester username
+    if (slot_index != -1 && username_by_slot[slot_index][0] != '\0')
+    {
+        strncpy(requester, username_by_slot[slot_index], sizeof(requester) - 1);
+        requester[sizeof(requester) - 1] = '\0';
+    }
 
-                // Check if requester is root
-                int is_root_requester = 0;
-                pthread_mutex_lock(&active_clients_mutex);
-                for (int k = 0; k < active_count; ++k)
-                {
-                    if (strcmp(active_clients[k].username, requester) == 0)
-                    {
-                        if (active_clients[k].is_root)
-                            is_root_requester = 1;
-                        break;
-                    }
-                }
+    // Check if requester is root
+    int is_root_requester = 0;
+    pthread_mutex_lock(&active_clients_mutex);
+    for (int k = 0; k < active_count; ++k)
+    {
+        if (strcmp(active_clients[k].username, requester) == 0)
+        {
+            if (active_clients[k].is_root)
+                is_root_requester = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&active_clients_mutex);
 
-                if (is_root_requester)
-                {
-                    send(sd, "200 OK\nServer shutting down\n", 28, 0);
+    if (is_root_requester)
+    {
+        send(sd, "200 OK\nServer shutting down\n", 28, 0);
 
-                    // Set shutdown flag for root
-                    pthread_mutex_lock(&shutdown_mutex);
-                    server_shutdown = 1;
-                    pthread_mutex_unlock(&shutdown_mutex);
+        // Set shutdown flag for root
+        pthread_mutex_lock(&shutdown_mutex);
+        server_shutdown = 1;
+        pthread_mutex_unlock(&shutdown_mutex);
 
-                    pthread_mutex_unlock(&active_clients_mutex);
-                    printf("Root SHUTDOWN: server will terminate.\n");
-                }
-                else
-                {
-                    send(sd, "200 OK\nDisconnecting all clients (server stays online)\n", 55, 0);
+        printf("Root SHUTDOWN: server will terminate.\n");
+    }
+    else
+    {
+        // Non-root user: deny shutdown
+        send(sd, "401 Error, Only root can shutdown the server\n", 53, 0);
+    }
+}
 
-                    // Mark all clients for disconnection (including requester)
-                    pthread_mutex_lock(&disconnect_mutex);
-                    for (int j = 0; j < FD_SETSIZE; ++j)
-                    {
-                        if (client_sockets[j] != -1 && client_sockets[j] != serverSocket)
-                        {
-                            disconnect_list[j] = 1; // Mark for disconnection
-                        }
-                    }
-                    pthread_mutex_unlock(&disconnect_mutex);
-
-                    active_count = 0;
-                    conn_count = 0;
-
-                    pthread_mutex_unlock(&active_clients_mutex);
-                    printf("Non-root SHUTDOWN: all clients marked for disconnection\n");
-                }
-            }
             else
             {
                 send(sd, "Invalid command\n", 16, 0);
@@ -1376,7 +1367,7 @@ int main()
         if (server_shutdown)
         {
             pthread_mutex_unlock(&shutdown_mutex);
-            printf("Server shutdown initiated by root user.\n");
+            printf("Server has been shutdown\n");
             break;
         }
         pthread_mutex_unlock(&shutdown_mutex);
@@ -1461,7 +1452,7 @@ int main()
             int bytes = recv(sd, buf, sizeof(buf) - 1, 0);
             if (bytes <= 0)
             {
-                // client disconnected
+       
                 printf("Client on socket %d disconnected\n", sd);
                 pthread_mutex_lock(&active_clients_mutex);
                 for (int k = 0; k < active_count; ++k)
@@ -1492,7 +1483,6 @@ int main()
             enqueue(&workQueue, t);
         }
 
-        // Check for pending disconnections
         pthread_mutex_lock(&disconnect_mutex);
         for (int i = 0; i < FD_SETSIZE; ++i)
         {
@@ -1504,14 +1494,13 @@ int main()
                 client_sockets[i] = -1;
                 login_status[i] = 0;
                 username_by_slot[i][0] = '\0';
-                disconnect_list[i] = 0; // Reset flag
+                disconnect_list[i] = 0;
                 conn_count--;
             }
         }
         pthread_mutex_unlock(&disconnect_mutex);
     }
 
-    // cleanup
     close(serverSocket);
     sqlite3_close(db);
 
